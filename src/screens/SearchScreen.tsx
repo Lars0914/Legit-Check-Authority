@@ -209,20 +209,9 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
               onPress={() => onSelectGuide(item.slug)}>
               <View style={styles.itemAccent} />
               <View style={styles.itemBody}>
-                <View style={styles.itemTitleRow}>
-                  <Text style={styles.itemTitle}>
-                    {item.brand ?? item.slug.replace(/_/g, " ")}
-                  </Text>
-                  {item.premium ? (
-                    <View
-                      style={[
-                        styles.premiumBadge,
-                        item.accessible !== false && styles.premiumOwned,
-                      ]}>
-                      <Text style={styles.premiumBadgeText}>PREMIUM</Text>
-                    </View>
-                  ) : null}
-                </View>
+                <Text style={styles.itemTitle}>
+                  {item.brand ?? item.slug.replace(/_/g, " ")}
+                </Text>
                 {item.model ? (
                   <Text style={styles.itemModel}>{item.model}</Text>
                 ) : null}
@@ -394,34 +383,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
   },
-  itemTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   itemTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: theme.colors.accentCyan,
-  },
-  premiumBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(180, 83, 9, 0.45)",
-    backgroundColor: "rgba(180, 83, 9, 0.12)",
-  },
-  premiumOwned: {
-    borderColor: "rgba(8, 145, 178, 0.45)",
-    backgroundColor: "rgba(8, 145, 178, 0.12)",
-  },
-  premiumBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    color: theme.colors.accentGold,
   },
   itemModel: {
     fontSize: 14,
