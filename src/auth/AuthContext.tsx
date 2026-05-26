@@ -11,6 +11,7 @@ import {
   signInWithGoogle as apiSignInWithGoogle,
   signUp as apiSignUp,
 } from "../api/client";
+import { AUTH_ENABLED } from "../config";
 import { getGoogleIdToken, signOutGoogle } from "./googleSignIn";
 import {
   clearSession,
@@ -37,6 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!AUTH_ENABLED) {
+      clearSession()
+        .catch(() => {})
+        .finally(() => setReady(true));
+      return;
+    }
+
     loadSession()
       .then((session) => {
         if (session) {

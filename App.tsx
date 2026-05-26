@@ -19,7 +19,7 @@ function AppContent() {
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
 
   useEffect(() => {
-    setApiAuthToken(token);
+    setApiAuthToken(AUTH_ENABLED ? token : null);
   }, [token]);
 
   if (!ready) {

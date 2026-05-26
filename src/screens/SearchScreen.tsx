@@ -76,7 +76,12 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
           lastViewedSlug: null,
         });
       } else {
-        setError(e instanceof Error ? e.message : "Search failed");
+        const message = e instanceof Error ? e.message : "Search failed";
+        setError(
+          !AUTH_ENABLED && message === "Sign in required"
+            ? "Server requires sign-in. On Vercel set AUTH_ENABLED=false and redeploy the backend."
+            : message,
+        );
       }
     } finally {
       setLoading(false);
