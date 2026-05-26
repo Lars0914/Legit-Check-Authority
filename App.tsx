@@ -2,16 +2,11 @@
  * Legit Check Authority — watch authentication guides
  */
 
-import { StripeProvider } from "@stripe/stripe-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet, View } from "react-native";
 import { setApiAuthToken } from "./src/api/client";
 import { AuthProvider, useAuth } from "./src/auth/AuthContext";
-import {
-  AUTH_ENABLED,
-  paymentsUiEnabled,
-  STRIPE_PUBLISHABLE_KEY,
-} from "./src/config";
+import { AUTH_ENABLED, paymentsUiEnabled } from "./src/config";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { GuideScreen } from "./src/screens/GuideScreen";
 import { SubscriptionScreen } from "./src/screens/SubscriptionScreen";
@@ -63,32 +58,17 @@ function AppContent() {
   );
 }
 
-function StripeWrapper({ children }: { children: React.ReactNode }) {
-  if (!paymentsUiEnabled()) {
-    return <>{children}</>;
-  }
-  return (
-    <StripeProvider
-      publishableKey={STRIPE_PUBLISHABLE_KEY}
-      urlScheme="ticker">
-      {children}
-    </StripeProvider>
-  );
-}
-
 function App() {
   return (
     <AuthProvider>
-      <StripeWrapper>
-        <View style={styles.root}>
-          <StatusBar
-            barStyle="dark-content"
-            backgroundColor={theme.colors.bg}
-            translucent
-          />
-          <AppContent />
-        </View>
-      </StripeWrapper>
+      <View style={styles.root}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={theme.colors.bg}
+          translucent
+        />
+        <AppContent />
+      </View>
     </AuthProvider>
   );
 }

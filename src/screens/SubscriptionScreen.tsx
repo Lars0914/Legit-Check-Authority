@@ -1,4 +1,4 @@
-import { useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "../payments/useStripe";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,

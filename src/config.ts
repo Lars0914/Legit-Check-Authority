@@ -10,6 +10,8 @@ export const APP_DISPLAY_NAME = "Legit Check Authority";
 export const AUTH_ENABLED = false;
 export const PAYMENTS_ENABLED = false;
 
+/** When true: npm install @stripe/stripe-react-native@^0.58.0 and wire src/payments/useStripe.ts */
+
 /**
  * Android emulator: 10.0.2.2 maps to the host machine's localhost.
  * iOS simulator: localhost. Physical device: use your PC's LAN IP.
