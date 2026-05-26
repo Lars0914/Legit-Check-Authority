@@ -1,0 +1,100 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets (never commit keys or local overrides)
+.env
+.env.*
+!.env.example
+
+# OSX
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+
+# Android / IntelliJ
+.idea/
+.gradle/
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+keystore.properties
+.kotlin/
+
+# Android build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# node.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Metro / React Native
+.metro-health-check*
+*.jsbundle
+
+# fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Ruby / CocoaPods
+**/Pods/
+/vendor/bundle/
+
+# Testing & coverage
+/coverage
+*.lcov
+
+# TypeScript / tooling caches
+*.tsbuildinfo
+.eslintcache
+
+# Yarn (Berry)
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Editors (optional local settings; keep shared launch configs if you add them)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Misc
+*.log
+*.tmp
+*.swp
+*~
