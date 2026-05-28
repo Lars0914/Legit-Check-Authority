@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -27,7 +27,14 @@ export function GuideImage({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const imageUri = resolveGuideImageUrl(photo.url);
+  const [retrying, setRetrying] = useState(false);
+  const imageUri = resolveGuideImageUrl(photo.url, retrying);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(false);
+    setRetrying(false);
+  }, [photo.url]);
 
   if (!photo.found) {
     return (
@@ -60,7 +67,8 @@ export function GuideImage({
           <Text style={styles.missingText}>Failed to load image</Text>
         ) : (
           <Image
-            source={{ uri: imageUri }}
+            key={imageUri}
+            source={{ uri: imageUri, cache: "reload" }}
             style={[
               styles.image,
               paired && !fullWidth && styles.imagePaired,
@@ -69,6 +77,11 @@ export function GuideImage({
             resizeMode="contain"
             onLoadEnd={() => setLoading(false)}
             onError={() => {
+              if (!retrying) {
+                setRetrying(true);
+                setLoading(true);
+                return;
+              }
               setLoading(false);
               setError(true);
             }}
