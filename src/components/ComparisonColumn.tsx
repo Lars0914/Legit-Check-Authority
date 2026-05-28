@@ -54,7 +54,7 @@ export function ComparisonColumn({
       </View>
       {text?.text ? <Text style={styles.body}>{text.text}</Text> : null}
       {photo ? (
-        <View style={[styles.photoSlot, paired && styles.photoSlotPaired]}>
+        <View style={styles.photoSlot}>
           <GuideImage
             photo={photo}
             label={variant === "genuine" ? "Reference" : "Comparison"}
@@ -62,8 +62,6 @@ export function ComparisonColumn({
             paired={paired}
           />
         </View>
-      ) : paired ? (
-        <View style={styles.photoSlotPaired} />
       ) : null}
     </View>
   );
@@ -112,9 +110,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   photoSlot: { marginTop: 10 },
-  photoSlotPaired: {
-    flex: 1,
-    minHeight: 240,
-    justifyContent: "flex-end",
-  },
 });

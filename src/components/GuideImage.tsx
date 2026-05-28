@@ -10,8 +10,6 @@ import { resolveGuideImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { PhotoRef } from "../types/api";
 
-const PAIRED_IMAGE_HEIGHT = 200;
-
 interface Props {
   photo: PhotoRef;
   label: string;
@@ -134,8 +132,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   boxPaired: {
-    minHeight: PAIRED_IMAGE_HEIGHT,
-    height: PAIRED_IMAGE_HEIGHT,
     width: "100%",
   },
   boxFullWidth: {
@@ -143,7 +139,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   image: { width: "100%", height: 220 },
-  imagePaired: { height: PAIRED_IMAGE_HEIGHT },
+  imagePaired: { width: "100%", height: undefined, aspectRatio: 4 / 3 },
   imageFullWidth: { height: 280 },
   loader: { position: "absolute" },
   missing: { padding: 12 },
