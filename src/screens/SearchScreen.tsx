@@ -45,6 +45,7 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
     null,
   );
   const [usageLimit, setUsageLimit] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
 
   useEffect(() => {
     checkApiHealth().then(setApiOk);
@@ -54,9 +55,11 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
     setLoading(true);
     setError(null);
     setUsageLimit(null);
+    setSuggestion(null);
     try {
       const data = await searchGuides(text);
       setResults(data.results);
+      setSuggestion(data.suggestion ?? null);
       if (data.subscription) {
         setSubscription(data.subscription);
       }
@@ -107,7 +110,7 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
         <View style={styles.hero}>
           <View style={styles.heroRow}>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>AUTHENTICATION</Text>
+              <Text style={styles.badgeText}>AI ASSISTANT</Text>
             </View>
             {AUTH_ENABLED ? (
               <View style={styles.heroActions}>
@@ -125,8 +128,8 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
           <Text style={styles.heading}>{APP_DISPLAY_NAME}</Text>
           <Text style={styles.sub}>
             {AUTH_ENABLED && user
-              ? `Signed in as ${user.mail}. Search guides below.`
-              : "Browse watch authentication guides below."}
+              ? `Hi ${user.mail.split("@")[0]} — what watch are you checking?`
+              : "What watch are you checking? I'll walk you through real vs fake."}
           </Text>
           {AUTH_ENABLED && showPayments && subscription ? (
             <Text style={styles.planHint}>
@@ -165,7 +168,7 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
           <Text style={styles.searchIcon}>⌕</Text>
           <TextInput
             style={styles.input}
-            placeholder="Search brand, model, guide…"
+            placeholder="Try AP, Daytona, Submariner…"
             placeholderTextColor={theme.colors.textMuted}
             value={query}
             onChangeText={setQuery}
@@ -178,6 +181,10 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
           />
         </View>
 
+        <Text style={styles.searchHint}>
+          Smart search understands abbreviations and common typos
+        </Text>
+
         {loading ? (
           <ActivityIndicator
             style={styles.loader}
@@ -187,7 +194,15 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.sectionLabel}>Guides</Text>
+        {suggestion && !loading && results.length === 0 ? (
+          <View style={styles.suggestionBanner}>
+            <Text style={styles.suggestionText}>{suggestion}</Text>
+          </View>
+        ) : null}
+
+        <Text style={styles.sectionLabel}>
+          {query.trim().length >= 2 ? "Matches" : "Available guides"}
+        </Text>
 
         <FlatList
           data={results}
@@ -197,7 +212,11 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             !loading && !error ? (
-              <Text style={styles.empty}>No guides match your search.</Text>
+              <Text style={styles.empty}>
+                {query.trim().length >= 2
+                  ? "No guides match — try a brand abbreviation or check spelling."
+                  : "Start typing a brand or model to find your guide."}
+              </Text>
             ) : null
           }
           renderItem={({ item }) => (
@@ -218,7 +237,12 @@ export function SearchScreen({ onSelectGuide, onOpenSubscription }: Props) {
                 {item.title ? (
                   <Text style={styles.itemMeta}>{item.title}</Text>
                 ) : null}
-                <Text style={styles.itemSlug}>{item.slug}</Text>
+                {item.sectionCount != null && item.sectionCount > 0 ? (
+                  <Text style={styles.itemCheckpoints}>
+                    {item.sectionCount} inspection checkpoint
+                    {item.sectionCount === 1 ? "" : "s"}
+                  </Text>
+                ) : null}
               </View>
               <Text style={styles.chevron}>›</Text>
             </Pressable>
@@ -341,6 +365,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
   },
+  searchHint: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: -8,
+    marginBottom: theme.spacing.md,
+    lineHeight: 17,
+  },
+  suggestionBanner: {
+    backgroundColor: "rgba(8, 145, 178, 0.08)",
+    borderWidth: 1,
+    borderColor: theme.colors.borderBright,
+    padding: 12,
+    borderRadius: theme.radius.md,
+    marginBottom: theme.spacing.md,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: theme.colors.accentCyan,
+    fontWeight: "600",
+    lineHeight: 20,
+  },
   loader: { marginVertical: 12 },
   error: { color: theme.colors.error, marginBottom: 8 },
   sectionLabel: {
@@ -399,11 +444,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 4,
   },
-  itemSlug: {
-    fontSize: 10,
-    color: theme.colors.textMuted,
+  itemCheckpoints: {
+    fontSize: 12,
+    color: theme.colors.accentCyan,
     marginTop: 6,
-    letterSpacing: 0.5,
+    fontWeight: "600",
   },
   chevron: {
     fontSize: 22,

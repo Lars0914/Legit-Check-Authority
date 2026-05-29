@@ -16,6 +16,7 @@ export interface SearchResult {
   brand: string | null;
   model: string | null;
   title: string | null;
+  sectionCount?: number;
   score: number;
   premium: boolean;
   accessible?: boolean;
@@ -26,6 +27,7 @@ export interface SearchResponse {
   storage: string;
   count: number;
   results: SearchResult[];
+  suggestion?: string | null;
   subscription?: SubscriptionInfo;
   proPriceCents?: number;
   currency?: string;

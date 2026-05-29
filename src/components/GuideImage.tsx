@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { ImageLightbox } from "./ImageLightbox";
 import { resolveGuideImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { PhotoRef } from "../types/api";
@@ -26,6 +28,7 @@ export function GuideImage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const imageUri = resolveGuideImageUrl(photo.url, retrying);
 
   useEffect(() => {
@@ -52,43 +55,62 @@ export function GuideImage({
           </View>
         ) : null}
       </View>
-      <View
-        style={[
-          styles.box,
-          paired && !fullWidth && styles.boxPaired,
-          fullWidth && styles.boxFullWidth,
-        ]}>
-        {loading ? (
-          <ActivityIndicator style={styles.loader} color={theme.colors.accentCyan} />
-        ) : null}
-        {error ? (
-          <Text style={styles.missingText}>Failed to load image</Text>
-        ) : (
-          <Image
-            key={imageUri}
-            source={{ uri: imageUri, cache: "reload" }}
-            style={[
-              styles.image,
-              paired && !fullWidth && styles.imagePaired,
-              fullWidth && styles.imageFullWidth,
-            ]}
-            resizeMode="contain"
-            onLoadEnd={() => setLoading(false)}
-            onError={() => {
-              if (!retrying) {
-                setRetrying(true);
-                setLoading(true);
-                return;
-              }
-              setLoading(false);
-              setError(true);
-            }}
-          />
-        )}
-      </View>
+      <Pressable
+        onPress={() => !error && !loading && setLightboxOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Zoom ${label} image`}
+        style={({ pressed }) => [pressed && styles.pressed]}>
+        <View
+          style={[
+            styles.box,
+            paired && !fullWidth && styles.boxPaired,
+            fullWidth && styles.boxFullWidth,
+          ]}>
+          {loading ? (
+            <ActivityIndicator style={styles.loader} color={theme.colors.accentCyan} />
+          ) : null}
+          {error ? (
+            <Text style={styles.missingText}>Failed to load image</Text>
+          ) : (
+            <Image
+              key={imageUri}
+              source={{ uri: imageUri, cache: "reload" }}
+              style={[
+                styles.image,
+                paired && !fullWidth && styles.imagePaired,
+                fullWidth && styles.imageFullWidth,
+              ]}
+              resizeMode="contain"
+              onLoadEnd={() => setLoading(false)}
+              onError={() => {
+                if (!retrying) {
+                  setRetrying(true);
+                  setLoading(true);
+                  return;
+                }
+                setLoading(false);
+                setError(true);
+              }}
+            />
+          )}
+          {!loading && !error ? (
+            <View style={styles.zoomBadge}>
+              <Text style={styles.zoomBadgeText}>Tap to zoom</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
       {photo.caption ? (
         <Text style={styles.caption}>{photo.caption}</Text>
       ) : null}
+
+      <ImageLightbox
+        uri={imageUri}
+        visible={lightboxOpen}
+        label={label}
+        cropHint={photo.cropHint}
+        onClose={() => setLightboxOpen(false)}
+      />
     </View>
   );
 }
@@ -121,6 +143,7 @@ const styles = StyleSheet.create({
     color: theme.colors.accentCyan,
     textTransform: "capitalize",
   },
+  pressed: { opacity: 0.92 },
   box: {
     minHeight: 160,
     backgroundColor: theme.colors.imageBg,
@@ -147,6 +170,21 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 12,
     textAlign: "center",
+  },
+  zoomBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
+  },
+  zoomBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#F8FAFC",
+    letterSpacing: 0.3,
   },
   caption: {
     fontSize: 11,
