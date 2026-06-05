@@ -213,11 +213,18 @@ export function confirmSubscription(
   });
 }
 
+/** Vercel routes archive via /api?path= until rewrites are deployed. */
+function archiveApiPath(segments: string, query = ""): string {
+  const q = query ? `&q=${encodeURIComponent(query.trim())}` : "";
+  return `/api?path=${segments}${q}`;
+}
+
 export function fetchArchiveCatalog(
   query = "",
 ): Promise<ArchiveCatalogResponse> {
-  const q = encodeURIComponent(query.trim());
-  return getJson<ArchiveCatalogResponse>(`/archive/catalog?q=${q}`);
+  return getJson<ArchiveCatalogResponse>(
+    archiveApiPath("archive/catalog", query),
+  );
 }
 
 export function fetchArchiveModel(
@@ -225,7 +232,9 @@ export function fetchArchiveModel(
   modelSlug: string,
 ): Promise<ArchiveModelResponse> {
   return getJson<ArchiveModelResponse>(
-    `/archive/${encodeURIComponent(brandSlug)}/${encodeURIComponent(modelSlug)}`,
+    archiveApiPath(
+      `archive/${encodeURIComponent(brandSlug)}/${encodeURIComponent(modelSlug)}`,
+    ),
   );
 }
 

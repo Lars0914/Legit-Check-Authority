@@ -12,11 +12,12 @@ function resolveMediaUrl(url: string, maxWidth: number, retry = false): string {
     if (!parsed.pathname.startsWith("/media/")) {
       return url;
     }
-    const base = `${API_BASE_URL.replace(/\/$/, "")}${parsed.pathname}`;
-    const withSize = `${base}?w=${maxWidth}`;
+    const storagePath = parsed.pathname.replace(/^\/media\/?/, "");
+    const apiRoot = API_BASE_URL.replace(/\/$/, "");
+    const base = `${apiRoot}/api?path=media/${storagePath}`;
+    const withSize = `${base}&w=${maxWidth}`;
     if (!retry) return withSize;
-    const sep = withSize.includes("?") ? "&" : "?";
-    return `${withSize}${sep}t=${Date.now()}`;
+    return `${withSize}&t=${Date.now()}`;
   } catch {
     return url;
   }
