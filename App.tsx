@@ -8,14 +8,12 @@ import { setApiAuthToken } from "./src/api/client";
 import { AuthProvider, useAuth } from "./src/auth/AuthContext";
 import { AUTH_ENABLED, paymentsUiEnabled } from "./src/config";
 import { AuthScreen } from "./src/screens/AuthScreen";
-import { GuideScreen } from "./src/screens/GuideScreen";
+import { ArchiveScreen } from "./src/screens/ArchiveScreen";
 import { SubscriptionScreen } from "./src/screens/SubscriptionScreen";
-import { SearchScreen } from "./src/screens/SearchScreen";
 import { theme } from "./src/theme";
 
 function AppContent() {
   const { token, user, ready } = useAuth();
-  const [slug, setSlug] = useState<string | null>(null);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
 
   useEffect(() => {
@@ -42,17 +40,8 @@ function AppContent() {
     <>
       {subscriptionOpen ? (
         <SubscriptionScreen onBack={() => setSubscriptionOpen(false)} />
-      ) : slug ? (
-        <GuideScreen
-          slug={slug}
-          onBack={() => setSlug(null)}
-          onOpenSubscription={openSubscription}
-        />
       ) : (
-        <SearchScreen
-          onSelectGuide={setSlug}
-          onOpenSubscription={openSubscription}
-        />
+        <ArchiveScreen onOpenSubscription={openSubscription} />
       )}
     </>
   );

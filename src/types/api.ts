@@ -105,3 +105,41 @@ export interface GuideResponse {
   premium?: boolean;
   subscription?: SubscriptionInfo;
 }
+
+export interface ArchiveModel {
+  id: string;
+  name: string;
+  slug: string;
+  folderPath: string;
+  imageCount: number;
+}
+
+export interface ArchiveBrand {
+  id: string;
+  name: string;
+  slug: string;
+  folderPath: string;
+  models: ArchiveModel[];
+}
+
+export interface ArchiveCatalogResponse {
+  storage: string;
+  query: string;
+  count: number;
+  brands: ArchiveBrand[];
+}
+
+export interface ArchiveImage {
+  fileName: string;
+  storagePath: string;
+  url: string;
+}
+
+export interface ArchiveModelResponse {
+  storage: string;
+  brand: string;
+  brandSlug: string;
+  model: string;
+  modelSlug: string;
+  images: ArchiveImage[];
+}

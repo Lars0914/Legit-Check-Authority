@@ -22,6 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeFactory = factory
 
     window = UIWindow(frame: UIScreen.main.bounds)
+    window?.makeSecure()
 
     factory.startReactNative(
       withModuleName: "Ticker",
@@ -30,6 +31,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     )
 
     return true
+  }
+}
+
+extension UIWindow {
+  func makeSecure() {
+    let field = UITextField()
+    field.isSecureTextEntry = true
+    addSubview(field)
+    field.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      field.centerXAnchor.constraint(equalTo: centerXAnchor),
+      field.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ])
+    layer.superlayer?.addSublayer(field.layer)
+    if let secureLayer = field.layer.sublayers?.first {
+      secureLayer.addSublayer(layer)
+    }
   }
 }
 

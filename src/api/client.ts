@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "../config";
 import type {
+  ArchiveCatalogResponse,
+  ArchiveModelResponse,
   GuideResponse,
   PaymentsConfigResponse,
   SearchResponse,
@@ -209,6 +211,22 @@ export function confirmSubscription(
     method: "POST",
     body: JSON.stringify({ subscriptionId }),
   });
+}
+
+export function fetchArchiveCatalog(
+  query = "",
+): Promise<ArchiveCatalogResponse> {
+  const q = encodeURIComponent(query.trim());
+  return getJson<ArchiveCatalogResponse>(`/archive/catalog?q=${q}`);
+}
+
+export function fetchArchiveModel(
+  brandSlug: string,
+  modelSlug: string,
+): Promise<ArchiveModelResponse> {
+  return getJson<ArchiveModelResponse>(
+    `/archive/${encodeURIComponent(brandSlug)}/${encodeURIComponent(modelSlug)}`,
+  );
 }
 
 export async function checkApiHealth(): Promise<boolean> {
