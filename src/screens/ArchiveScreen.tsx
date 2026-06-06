@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -21,14 +21,72 @@ import { ArchiveImage } from "../components/ArchiveImage";
 import { ScreenChrome } from "../components/ScreenChrome";
 import { prefetchArchiveImages } from "../lib/imageUrl";
 import { theme } from "../theme";
-import type { ArchiveBrand, ArchiveImage as ArchiveImageType } from "../types/api";
+import type { ArchiveBrand, ArchiveImage as ArchiveImageType, ArchiveModel } from "../types/api";
 
 interface Props {
   onOpenSubscription?: () => void;
 }
 
+interface FlatResult {
+  brand: ArchiveBrand;
+  model: ArchiveModel;
+}
+
+const QUICK_SEARCHES = [
+  { label: "Royal Oak", query: "royal oak" },
+  { label: "Daytona", query: "daytona" },
+  { label: "Nautilus", query: "nautilus" },
+  { label: "Submariner", query: "submariner" },
+];
+
+const BRAND_FILTERS = [
+  { label: "Rolex", query: "rolex" },
+  { label: "AP", query: "ap" },
+  { label: "Patek", query: "pp" },
+  { label: "RM", query: "rm" },
+];
+
 function modelKey(brandSlug: string, modelSlug: string): string {
   return `${brandSlug}:${modelSlug}`;
+}
+
+function brandMonogram(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function HighlightText({
+  text,
+  query,
+  style,
+  highlightStyle,
+}: {
+  text: string;
+  query: string;
+  style?: object;
+  highlightStyle?: object;
+}) {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return <Text style={style}>{text}</Text>;
+  }
+
+  const lower = text.toLowerCase();
+  const idx = lower.indexOf(q);
+  if (idx < 0) {
+    return <Text style={style}>{text}</Text>;
+  }
+
+  return (
+    <Text style={style}>
+      {text.slice(0, idx)}
+      <Text style={[style, highlightStyle]}>{text.slice(idx, idx + q.length)}</Text>
+      {text.slice(idx + q.length)}
+    </Text>
+  );
 }
 
 export function ArchiveScreen({ onOpenSubscription }: Props) {
@@ -49,6 +107,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     Record<string, ArchiveImageType[]>
   >({});
   const [loadingModel, setLoadingModel] = useState<string | null>(null);
+  const autoOpenedRef = useRef<string | null>(null);
+
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length > 0;
 
   useEffect(() => {
     checkApiHealth().then(setApiOk);
@@ -75,6 +137,22 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     return () => clearTimeout(t);
   }, [query, loadCatalog]);
 
+  const flatResults = useMemo<FlatResult[]>(() => {
+    if (!isSearching) return [];
+    const results: FlatResult[] = [];
+    for (const brand of brands) {
+      for (const model of brand.models) {
+        results.push({ brand, model });
+      }
+    }
+    return results;
+  }, [brands, isSearching]);
+
+  const totalModels = useMemo(
+    () => brands.reduce((sum, brand) => sum + brand.models.length, 0),
+    [brands],
+  );
+
   const loadModelImages = useCallback(
     async (brandSlug: string, modelSlug: string) => {
       const key = modelKey(brandSlug, modelSlug);
@@ -94,6 +172,16 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     [modelImages],
   );
 
+  const openModel = useCallback(
+    (brandSlug: string, modelSlug: string) => {
+      const key = modelKey(brandSlug, modelSlug);
+      setExpandedBrand(brandSlug);
+      setExpandedModel(key);
+      loadModelImages(brandSlug, modelSlug);
+    },
+    [loadModelImages],
+  );
+
   const toggleBrand = useCallback((brandSlug: string) => {
     setExpandedBrand((prev) => (prev === brandSlug ? null : brandSlug));
     setExpandedModel(null);
@@ -102,18 +190,154 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
   const toggleModel = useCallback(
     (brandSlug: string, modelSlug: string) => {
       const key = modelKey(brandSlug, modelSlug);
-      setExpandedModel((prev) => (prev === key ? null : key));
-      if (expandedModel !== key) {
-        loadModelImages(brandSlug, modelSlug);
+      if (expandedModel === key) {
+        setExpandedModel(null);
+        return;
       }
+      openModel(brandSlug, modelSlug);
     },
-    [expandedModel, loadModelImages],
+    [expandedModel, openModel],
   );
 
-  const totalModels = useMemo(
-    () => brands.reduce((sum, brand) => sum + brand.models.length, 0),
-    [brands],
-  );
+  useEffect(() => {
+    if (!isSearching) {
+      autoOpenedRef.current = null;
+      return;
+    }
+    if (flatResults.length !== 1 || loading) return;
+
+    const { brand, model } = flatResults[0];
+    const key = modelKey(brand.slug, model.slug);
+    if (autoOpenedRef.current === key) return;
+
+    autoOpenedRef.current = key;
+    openModel(brand.slug, model.slug);
+  }, [flatResults, isSearching, loading, openModel]);
+
+  const renderModelImages = (brandSlug: string, modelSlug: string) => {
+    const key = modelKey(brandSlug, modelSlug);
+    const images = modelImages[key] ?? [];
+
+    return (
+      <View style={styles.imagePanel}>
+        {loadingModel === key ? (
+          <ActivityIndicator
+            color={theme.colors.accentGold}
+            style={styles.modelLoader}
+          />
+        ) : null}
+        {images.map((image, index) => (
+          <ArchiveImage
+            key={image.storagePath}
+            image={image}
+            priority={index < 3}
+          />
+        ))}
+        {!loadingModel && images.length === 0 ? (
+          <Text style={styles.emptyImages}>No images found for this model.</Text>
+        ) : null}
+      </View>
+    );
+  };
+
+  const renderSearchResult = ({ brand, model }: FlatResult) => {
+    const key = modelKey(brand.slug, model.slug);
+    const open = expandedModel === key;
+
+    return (
+      <View key={key} style={[styles.resultCard, open && styles.resultCardOpen]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.resultRow,
+            pressed && styles.rowPressed,
+          ]}
+          onPress={() => toggleModel(brand.slug, model.slug)}>
+          <View style={styles.resultBody}>
+            <Text style={styles.resultBrand}>{brand.name}</Text>
+            <HighlightText
+              text={model.name}
+              query={trimmedQuery}
+              style={styles.resultTitle}
+              highlightStyle={styles.highlight}
+            />
+            <View style={styles.resultMetaRow}>
+              <View style={styles.countPill}>
+                <Text style={styles.countPillText}>
+                  {model.imageCount} photo{model.imageCount === 1 ? "" : "s"}
+                </Text>
+              </View>
+              <Text style={styles.resultHint}>
+                {open ? "Hide photos" : "View photos"}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.chevronCircle, open && styles.chevronCircleOpen]}>
+            <Text style={styles.chevron}>{open ? "▴" : "▾"}</Text>
+          </View>
+        </Pressable>
+        {open ? renderModelImages(brand.slug, model.slug) : null}
+      </View>
+    );
+  };
+
+  const renderBrowseBrand = (brand: ArchiveBrand) => {
+    const brandOpen = expandedBrand === brand.slug;
+
+    return (
+      <View key={brand.id} style={styles.brandCard}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.brandRow,
+            brandOpen && styles.brandRowOpen,
+            pressed && styles.rowPressed,
+          ]}
+          onPress={() => toggleBrand(brand.slug)}>
+          <View style={styles.brandAvatar}>
+            <Text style={styles.brandAvatarText}>{brandMonogram(brand.name)}</Text>
+          </View>
+          <View style={styles.brandBody}>
+            <Text style={styles.brandTitle}>{brand.name}</Text>
+            <Text style={styles.brandMeta}>
+              {brand.models.length} model{brand.models.length === 1 ? "" : "s"}
+            </Text>
+          </View>
+          <View style={[styles.chevronCircle, brandOpen && styles.chevronCircleOpen]}>
+            <Text style={styles.chevron}>{brandOpen ? "▴" : "▾"}</Text>
+          </View>
+        </Pressable>
+
+        {brandOpen
+          ? brand.models.map((model) => {
+              const key = modelKey(brand.slug, model.slug);
+              const modelOpen = expandedModel === key;
+
+              return (
+                <View key={model.id} style={styles.modelBlock}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.modelRow,
+                      modelOpen && styles.modelRowOpen,
+                      pressed && styles.rowPressed,
+                    ]}
+                    onPress={() => toggleModel(brand.slug, model.slug)}>
+                    <View style={styles.modelDot} />
+                    <View style={styles.modelTextWrap}>
+                      <Text style={styles.modelTitle}>{model.name}</Text>
+                      <Text style={styles.modelMeta}>
+                        {model.imageCount} reference photo
+                        {model.imageCount === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+                    <Text style={styles.modelChevron}>{modelOpen ? "▴" : "▾"}</Text>
+                  </Pressable>
+                  {modelOpen ? renderModelImages(brand.slug, model.slug) : null}
+                </View>
+              );
+            })
+          : null}
+      </View>
+    );
+  };
 
   return (
     <ScreenChrome>
@@ -134,9 +358,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             </View>
           ) : null}
           <Text style={styles.heading}>{APP_DISPLAY_NAME}</Text>
+          <Text style={styles.subtitle}>Private reference archive</Text>
           {AUTH_ENABLED && user ? (
-            <Text style={styles.sub}>
-              Hi {user.mail.split("@")[0]} — browse the watch archive
+            <Text style={styles.greeting}>
+              Hi {user.mail.split("@")[0]} — find a model below
             </Text>
           ) : null}
         </View>
@@ -150,11 +375,15 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
           </View>
         ) : null}
 
-        <View style={[styles.searchWrap, focused && styles.searchWrapFocused]}>
+        <View
+          style={[
+            styles.searchShell,
+            focused && styles.searchShellFocused,
+          ]}>
           <Text style={styles.searchIcon}>⌕</Text>
           <TextInput
             style={styles.input}
-            placeholder="Search brand or model…"
+            placeholder="Search model, reference, or brand…"
             placeholderTextColor={theme.colors.textMuted}
             value={query}
             onChangeText={setQuery}
@@ -164,100 +393,100 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
+          {query.length > 0 ? (
+            <Pressable
+              onPress={() => {
+                setQuery("");
+                setExpandedBrand(null);
+                setExpandedModel(null);
+              }}
+              hitSlop={8}
+              style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </Pressable>
+          ) : null}
         </View>
+
+        {!isSearching ? (
+          <View style={styles.chipsSection}>
+            <Text style={styles.chipsLabel}>Popular models</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsRow}>
+              {QUICK_SEARCHES.map((item) => (
+                <Pressable
+                  key={item.query}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    pressed && styles.chipPressed,
+                  ]}
+                  onPress={() => setQuery(item.query)}>
+                  <Text style={styles.chipText}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {!isSearching ? (
+          <View style={styles.chipsSection}>
+            <Text style={styles.chipsLabel}>Browse by brand</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsRow}>
+              {BRAND_FILTERS.map((item) => (
+                <Pressable
+                  key={item.query}
+                  style={({ pressed }) => [
+                    styles.chipGold,
+                    pressed && styles.chipPressed,
+                  ]}
+                  onPress={() => setQuery(item.query)}>
+                  <Text style={styles.chipGoldText}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {loading ? (
           <ActivityIndicator
             style={styles.loader}
-            color={theme.colors.accentCyan}
+            color={theme.colors.accentGold}
           />
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.sectionLabel}>
-          Watch brand list · {totalModels} model{totalModels === 1 ? "" : "s"}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionLabel}>
+            {isSearching ? "Search results" : "All brands"}
+          </Text>
+          <Text style={styles.sectionCount}>
+            {isSearching
+              ? `${flatResults.length} match${flatResults.length === 1 ? "" : "es"}`
+              : `${totalModels} models`}
+          </Text>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {brands.length === 0 && !loading && !error ? (
-            <Text style={styles.empty}>No watches match your search.</Text>
+          {!loading && isSearching && flatResults.length === 0 && !error ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No models found</Text>
+              <Text style={styles.empty}>
+                Try “Royal Oak”, “Daytona”, “AP”, or a reference number.
+              </Text>
+            </View>
           ) : null}
 
-          {brands.map((brand) => {
-            const brandOpen = expandedBrand === brand.slug;
-            return (
-              <View key={brand.id} style={styles.brandBlock}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.brandRow,
-                    brandOpen && styles.brandRowOpen,
-                    pressed && styles.rowPressed,
-                  ]}
-                  onPress={() => toggleBrand(brand.slug)}>
-                  <Text style={styles.brandTitle}>{brand.name}</Text>
-                  <Text style={styles.chevron}>{brandOpen ? "▴" : "▾"}</Text>
-                </Pressable>
-
-                {brandOpen
-                  ? brand.models.map((model) => {
-                      const key = modelKey(brand.slug, model.slug);
-                      const modelOpen = expandedModel === key;
-                      const images = modelImages[key] ?? [];
-
-                      return (
-                        <View key={model.id} style={styles.modelBlock}>
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.modelRow,
-                              modelOpen && styles.modelRowOpen,
-                              pressed && styles.rowPressed,
-                            ]}
-                            onPress={() => toggleModel(brand.slug, model.slug)}>
-                            <View style={styles.modelTextWrap}>
-                              <Text style={styles.modelTitle}>{model.name}</Text>
-                              <Text style={styles.modelMeta}>
-                                {model.imageCount} image
-                                {model.imageCount === 1 ? "" : "s"}
-                              </Text>
-                            </View>
-                            <Text style={styles.chevron}>
-                              {modelOpen ? "▴" : "▾"}
-                            </Text>
-                          </Pressable>
-
-                          {modelOpen ? (
-                            <View style={styles.imagePanel}>
-                              {loadingModel === key ? (
-                                <ActivityIndicator
-                                  color={theme.colors.accentCyan}
-                                  style={styles.modelLoader}
-                                />
-                              ) : null}
-                              {images.map((image, index) => (
-                                <ArchiveImage
-                                  key={image.storagePath}
-                                  image={image}
-                                  priority={index < 3}
-                                />
-                              ))}
-                              {!loadingModel && images.length === 0 ? (
-                                <Text style={styles.emptyImages}>
-                                  No images found for this model.
-                                </Text>
-                              ) : null}
-                            </View>
-                          ) : null}
-                        </View>
-                      );
-                    })
-                  : null}
-              </View>
-            );
-          })}
+          {isSearching
+            ? flatResults.map(renderSearchResult)
+            : brands.map(renderBrowseBrand)}
         </ScrollView>
       </View>
     </ScreenChrome>
@@ -269,7 +498,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.md,
   },
-  hero: { marginBottom: theme.spacing.lg },
+  hero: { marginBottom: theme.spacing.md },
   heroRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -295,11 +524,18 @@ const styles = StyleSheet.create({
     ...theme.font.hero,
     color: theme.colors.text,
   },
-  sub: {
-    fontSize: 15,
+  subtitle: {
+    fontSize: 14,
+    color: theme.colors.accentGold,
+    fontWeight: "600",
+    marginTop: 4,
+    letterSpacing: 0.3,
+  },
+  greeting: {
+    fontSize: 14,
     color: theme.colors.textSecondary,
-    marginTop: 6,
-    lineHeight: 22,
+    marginTop: 8,
+    lineHeight: 20,
   },
   banner: {
     backgroundColor: theme.colors.warningBg,
@@ -316,57 +552,202 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
-  searchWrap: {
+  searchShell: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingHorizontal: 14,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: 16,
+    marginBottom: theme.spacing.sm,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  searchWrapFocused: {
-    borderColor: theme.colors.accentCyan,
-    backgroundColor: theme.colors.surfaceHover,
+  searchShellFocused: {
+    borderColor: theme.colors.accentGold,
+    backgroundColor: "#FFFCF7",
   },
   searchIcon: {
     fontSize: 18,
-    color: theme.colors.accentCyan,
+    color: theme.colors.accentGold,
     marginRight: 10,
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 15,
     fontSize: 16,
     color: theme.colors.text,
   },
+  clearBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.pillBg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearBtnText: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  chipsSection: {
+    marginBottom: theme.spacing.sm,
+  },
+  chipsLabel: {
+    ...theme.font.label,
+    color: theme.colors.textMuted,
+    marginBottom: 8,
+  },
+  chipsRow: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  chipGold: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(180, 83, 9, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(180, 83, 9, 0.22)",
+  },
+  chipPressed: { opacity: 0.82 },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.text,
+  },
+  chipGoldText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: theme.colors.accentGold,
+  },
   loader: { marginVertical: 12 },
   error: { color: theme.colors.error, marginBottom: 8 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm,
+    marginTop: 4,
+  },
   sectionLabel: {
     ...theme.font.label,
     color: theme.colors.textMuted,
-    marginBottom: theme.spacing.sm,
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.accentGold,
   },
   list: { paddingBottom: theme.spacing.xl },
+  emptyCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.lg,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
   empty: {
     textAlign: "center",
     color: theme.colors.textMuted,
-    marginTop: 24,
     fontSize: 14,
+    lineHeight: 21,
   },
-  brandBlock: {
-    marginBottom: 10,
-    borderRadius: theme.radius.md,
+  resultCard: {
+    marginBottom: 12,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    overflow: "hidden",
     backgroundColor: theme.colors.surface,
+    overflow: "hidden",
+    shadowColor: "#6366F1",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  resultCardOpen: {
+    borderColor: "rgba(180, 83, 9, 0.28)",
+  },
+  resultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  resultBody: { flex: 1, paddingRight: 12 },
+  resultBrand: {
+    ...theme.font.label,
+    color: theme.colors.accentGold,
+    marginBottom: 6,
+  },
+  resultTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: theme.colors.text,
+    lineHeight: 24,
+  },
+  highlight: {
+    color: theme.colors.accentGold,
+    backgroundColor: "rgba(180, 83, 9, 0.12)",
+  },
+  resultMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+  },
+  countPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: theme.colors.pillBg,
+  },
+  countPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.colors.textSecondary,
+  },
+  resultHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.accentCyan,
+  },
+  brandCard: {
+    marginBottom: 12,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingVertical: 16,
     backgroundColor: theme.colors.surface,
@@ -374,13 +755,36 @@ const styles = StyleSheet.create({
   brandRowOpen: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceHover,
+    backgroundColor: "#FFFCF7",
   },
+  brandAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(180, 83, 9, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(180, 83, 9, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  brandAvatarText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: theme.colors.accentGold,
+    letterSpacing: 0.5,
+  },
+  brandBody: { flex: 1 },
   brandTitle: {
-    flex: 1,
     fontSize: 17,
     fontWeight: "700",
-    color: theme.colors.accentCyan,
+    color: theme.colors.text,
+  },
+  brandMeta: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: 4,
+    fontWeight: "600",
   },
   modelBlock: {
     borderTopWidth: 1,
@@ -389,13 +793,20 @@ const styles = StyleSheet.create({
   modelRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 14,
+    paddingLeft: 22,
     backgroundColor: theme.colors.bg,
   },
   modelRowOpen: {
     backgroundColor: theme.colors.surfaceHover,
+  },
+  modelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.accentGold,
+    marginRight: 12,
   },
   modelTextWrap: { flex: 1, paddingRight: 8 },
   modelTitle: {
@@ -409,6 +820,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     marginTop: 4,
   },
+  modelChevron: {
+    fontSize: 13,
+    color: theme.colors.accent,
+  },
   imagePanel: {
     paddingHorizontal: 14,
     paddingBottom: 14,
@@ -421,10 +836,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingVertical: 12,
   },
-  chevron: {
-    fontSize: 14,
-    color: theme.colors.accent,
-    paddingLeft: 8,
+  chevronCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: theme.colors.pillBg,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  rowPressed: { opacity: 0.85 },
+  chevronCircleOpen: {
+    backgroundColor: "rgba(180, 83, 9, 0.12)",
+  },
+  chevron: {
+    fontSize: 12,
+    color: theme.colors.accentGold,
+    fontWeight: "700",
+  },
+  rowPressed: { opacity: 0.86 },
 });
