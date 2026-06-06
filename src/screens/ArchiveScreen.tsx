@@ -358,7 +358,6 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             </View>
           ) : null}
           <Text style={styles.heading}>{APP_DISPLAY_NAME}</Text>
-          <Text style={styles.subtitle}>Private reference archive</Text>
           {AUTH_ENABLED && user ? (
             <Text style={styles.greeting}>
               Hi {user.mail.split("@")[0]} — find a model below
@@ -523,13 +522,6 @@ const styles = StyleSheet.create({
   heading: {
     ...theme.font.hero,
     color: theme.colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.accentGold,
-    fontWeight: "600",
-    marginTop: 4,
-    letterSpacing: 0.3,
   },
   greeting: {
     fontSize: 14,
