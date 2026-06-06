@@ -1,14 +1,12 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
   LayoutChangeEvent,
   Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  PanResponder,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +21,11 @@ interface Props {
   onClose: () => void;
 }
 
+interface Offset {
+  x: number;
+  y: number;
+}
+
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const BASE_IMAGE_W = SCREEN_W;
 const BASE_IMAGE_H = SCREEN_H * 0.62;
@@ -34,14 +37,32 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function contentSize(
-  zoom: number,
+function panBounds(
+  scale: number,
   viewportW: number,
   viewportH: number,
-): { w: number; h: number } {
+): { minX: number; maxX: number; minY: number; maxY: number } {
+  const extraX = (BASE_IMAGE_W * scale - viewportW) / 2;
+  const extraY = (BASE_IMAGE_H * scale - viewportH) / 2;
+
   return {
-    w: Math.max(viewportW, BASE_IMAGE_W * zoom),
-    h: Math.max(viewportH, BASE_IMAGE_H * zoom),
+    minX: extraX > 0 ? -extraX : 0,
+    maxX: extraX > 0 ? extraX : 0,
+    minY: extraY > 0 ? -extraY : 0,
+    maxY: extraY > 0 ? extraY : 0,
+  };
+}
+
+function clampOffset(
+  next: Offset,
+  scale: number,
+  viewportW: number,
+  viewportH: number,
+): Offset {
+  const bounds = panBounds(scale, viewportW, viewportH);
+  return {
+    x: clamp(next.x, bounds.minX, bounds.maxX),
+    y: clamp(next.y, bounds.minY, bounds.maxY),
   };
 }
 
@@ -52,26 +73,22 @@ export function ImageLightbox({
   cropHint,
   onClose,
 }: Props) {
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollOffset = useRef({ x: 0, y: 0 });
-  const pendingScroll = useRef<{ x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(MIN_ZOOM);
+  const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [viewport, setViewport] = useState({ w: SCREEN_W, h: SCREEN_H * 0.55 });
 
-  const { w: contentW, h: contentH } = contentSize(
-    zoomLevel,
-    viewport.w,
-    viewport.h,
-  );
-  const imageW = BASE_IMAGE_W * zoomLevel;
-  const imageH = BASE_IMAGE_H * zoomLevel;
-  const canPan = contentW > viewport.w || contentH > viewport.h;
+  const zoomRef = useRef(zoomLevel);
+  const offsetRef = useRef(offset);
+  const panStartRef = useRef<Offset>({ x: 0, y: 0 });
+  const viewportRef = useRef(viewport);
+
+  zoomRef.current = zoomLevel;
+  offsetRef.current = offset;
+  viewportRef.current = viewport;
 
   const resetZoom = useCallback(() => {
-    pendingScroll.current = null;
     setZoomLevel(MIN_ZOOM);
-    scrollOffset.current = { x: 0, y: 0 };
-    scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+    setOffset({ x: 0, y: 0 });
   }, []);
 
   const handleClose = useCallback(() => {
@@ -79,62 +96,71 @@ export function ImageLightbox({
     onClose();
   }, [onClose, resetZoom]);
 
-  const applyZoom = useCallback(
-    (next: number) => {
-      const newZoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
-      if (newZoom === zoomLevel) return;
+  const applyZoom = useCallback((next: number) => {
+    const currentZoom = zoomRef.current;
+    const newZoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
+    if (newZoom === currentZoom) return;
 
-      const oldSize = contentSize(zoomLevel, viewport.w, viewport.h);
-      const newSize = contentSize(newZoom, viewport.w, viewport.h);
-      const { x: sx, y: sy } = scrollOffset.current;
+    const ratio = newZoom / currentZoom;
+    const { w, h } = viewportRef.current;
+    const currentOffset = offsetRef.current;
 
-      const focalX = (sx + viewport.w / 2) / oldSize.w;
-      const focalY = (sy + viewport.h / 2) / oldSize.h;
-
-      const targetX = focalX * newSize.w - viewport.w / 2;
-      const targetY = focalY * newSize.h - viewport.h / 2;
-
-      pendingScroll.current = {
-        x: clamp(targetX, 0, Math.max(0, newSize.w - viewport.w)),
-        y: clamp(targetY, 0, Math.max(0, newSize.h - viewport.h)),
-      };
-
-      setZoomLevel(newZoom);
-    },
-    [viewport.h, viewport.w, zoomLevel],
-  );
+    setZoomLevel(newZoom);
+    setOffset(
+      clampOffset(
+        {
+          x: currentOffset.x * ratio,
+          y: currentOffset.y * ratio,
+        },
+        newZoom,
+        w,
+        h,
+      ),
+    );
+  }, []);
 
   const adjustZoom = useCallback(
     (delta: number) => {
-      applyZoom(zoomLevel + delta);
+      applyZoom(zoomRef.current + delta);
     },
-    [applyZoom, zoomLevel],
-  );
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollOffset.current = {
-        x: event.nativeEvent.contentOffset.x,
-        y: event.nativeEvent.contentOffset.y,
-      };
-    },
-    [],
+    [applyZoom],
   );
 
   const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     if (width > 0 && height > 0) {
       setViewport({ w: width, h: height });
+      setOffset((prev) =>
+        clampOffset(prev, zoomRef.current, width, height),
+      );
     }
   }, []);
 
-  useLayoutEffect(() => {
-    if (!pendingScroll.current) return;
-    const { x, y } = pendingScroll.current;
-    pendingScroll.current = null;
-    scrollRef.current?.scrollTo({ x, y, animated: false });
-    scrollOffset.current = { x, y };
-  }, [zoomLevel, contentW, contentH]);
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => zoomRef.current > MIN_ZOOM,
+        onMoveShouldSetPanResponder: () => zoomRef.current > MIN_ZOOM,
+        onPanResponderGrant: () => {
+          panStartRef.current = { ...offsetRef.current };
+        },
+        onPanResponderMove: (_, gesture) => {
+          const { w, h } = viewportRef.current;
+          setOffset(
+            clampOffset(
+              {
+                x: panStartRef.current.x + gesture.dx,
+                y: panStartRef.current.y + gesture.dy,
+              },
+              zoomRef.current,
+              w,
+              h,
+            ),
+          );
+        },
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!visible) {
@@ -164,30 +190,32 @@ export function ImageLightbox({
           </Pressable>
         </View>
 
-        <View style={styles.viewport} onLayout={handleViewportLayout}>
-          <ScrollView
-            ref={scrollRef}
-            style={styles.scroll}
-            contentContainerStyle={{
-              width: contentW,
-              height: contentH,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-            scrollEnabled={canPan}
-            showsHorizontalScrollIndicator={canPan}
-            showsVerticalScrollIndicator={canPan}
-            bounces={canPan}
-            nestedScrollEnabled
-            directionalLockEnabled={false}
-            scrollEventThrottle={16}
-            onScroll={handleScroll}>
-            <Image
-              source={{ uri }}
-              style={{ width: imageW, height: imageH }}
-              resizeMode="contain"
-            />
-          </ScrollView>
+        <View
+          style={styles.viewport}
+          onLayout={handleViewportLayout}
+          {...panResponder.panHandlers}>
+          <View
+            style={[
+              styles.stage,
+              { width: viewport.w, height: viewport.h },
+            ]}>
+            <View
+              style={{
+                width: BASE_IMAGE_W,
+                height: BASE_IMAGE_H,
+                transform: [
+                  { translateX: offset.x },
+                  { translateY: offset.y },
+                  { scale: zoomLevel },
+                ],
+              }}>
+              <Image
+                source={{ uri }}
+                style={styles.image}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
         </View>
 
         <View style={styles.controls}>
@@ -257,7 +285,14 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: "hidden",
   },
-  scroll: { flex: 1 },
+  stage: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  image: {
+    width: BASE_IMAGE_W,
+    height: BASE_IMAGE_H,
+  },
   controls: {
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 36 : 24,
