@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
   LayoutChangeEvent,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -28,6 +30,21 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.5;
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function contentSize(
+  zoom: number,
+  viewportW: number,
+  viewportH: number,
+): { w: number; h: number } {
+  return {
+    w: Math.max(viewportW, BASE_IMAGE_W * zoom),
+    h: Math.max(viewportH, BASE_IMAGE_H * zoom),
+  };
+}
+
 export function ImageLightbox({
   uri,
   visible,
@@ -36,26 +53,24 @@ export function ImageLightbox({
   onClose,
 }: Props) {
   const scrollRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef({ x: 0, y: 0 });
+  const pendingScroll = useRef<{ x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(MIN_ZOOM);
   const [viewport, setViewport] = useState({ w: SCREEN_W, h: SCREEN_H * 0.55 });
 
-  const contentW = BASE_IMAGE_W * zoomLevel;
-  const contentH = BASE_IMAGE_H * zoomLevel;
-  const canPan = zoomLevel > MIN_ZOOM;
-
-  const scrollToCenter = useCallback(
-    (level: number) => {
-      const w = BASE_IMAGE_W * level;
-      const h = BASE_IMAGE_H * level;
-      const x = Math.max(0, (w - viewport.w) / 2);
-      const y = Math.max(0, (h - viewport.h) / 2);
-      scrollRef.current?.scrollTo({ x, y, animated: true });
-    },
-    [viewport.h, viewport.w],
+  const { w: contentW, h: contentH } = contentSize(
+    zoomLevel,
+    viewport.w,
+    viewport.h,
   );
+  const imageW = BASE_IMAGE_W * zoomLevel;
+  const imageH = BASE_IMAGE_H * zoomLevel;
+  const canPan = contentW > viewport.w || contentH > viewport.h;
 
   const resetZoom = useCallback(() => {
+    pendingScroll.current = null;
     setZoomLevel(MIN_ZOOM);
+    scrollOffset.current = { x: 0, y: 0 };
     scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
   }, []);
 
@@ -64,16 +79,46 @@ export function ImageLightbox({
     onClose();
   }, [onClose, resetZoom]);
 
-  const applyZoom = useCallback((next: number) => {
-    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
-    setZoomLevel(clamped);
-  }, []);
+  const applyZoom = useCallback(
+    (next: number) => {
+      const newZoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
+      if (newZoom === zoomLevel) return;
+
+      const oldSize = contentSize(zoomLevel, viewport.w, viewport.h);
+      const newSize = contentSize(newZoom, viewport.w, viewport.h);
+      const { x: sx, y: sy } = scrollOffset.current;
+
+      const focalX = (sx + viewport.w / 2) / oldSize.w;
+      const focalY = (sy + viewport.h / 2) / oldSize.h;
+
+      const targetX = focalX * newSize.w - viewport.w / 2;
+      const targetY = focalY * newSize.h - viewport.h / 2;
+
+      pendingScroll.current = {
+        x: clamp(targetX, 0, Math.max(0, newSize.w - viewport.w)),
+        y: clamp(targetY, 0, Math.max(0, newSize.h - viewport.h)),
+      };
+
+      setZoomLevel(newZoom);
+    },
+    [viewport.h, viewport.w, zoomLevel],
+  );
 
   const adjustZoom = useCallback(
     (delta: number) => {
       applyZoom(zoomLevel + delta);
     },
     [applyZoom, zoomLevel],
+  );
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollOffset.current = {
+        x: event.nativeEvent.contentOffset.x,
+        y: event.nativeEvent.contentOffset.y,
+      };
+    },
+    [],
   );
 
   const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
@@ -83,20 +128,19 @@ export function ImageLightbox({
     }
   }, []);
 
+  useLayoutEffect(() => {
+    if (!pendingScroll.current) return;
+    const { x, y } = pendingScroll.current;
+    pendingScroll.current = null;
+    scrollRef.current?.scrollTo({ x, y, animated: false });
+    scrollOffset.current = { x, y };
+  }, [zoomLevel, contentW, contentH]);
+
   useEffect(() => {
     if (!visible) {
       resetZoom();
     }
   }, [visible, resetZoom]);
-
-  useEffect(() => {
-    if (!visible) return;
-    if (zoomLevel <= MIN_ZOOM) {
-      scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
-      return;
-    }
-    scrollToCenter(zoomLevel);
-  }, [visible, zoomLevel, viewport.w, viewport.h, scrollToCenter]);
 
   if (!visible) return null;
 
@@ -127,16 +171,20 @@ export function ImageLightbox({
             contentContainerStyle={{
               width: contentW,
               height: contentH,
+              justifyContent: "center",
+              alignItems: "center",
             }}
             scrollEnabled={canPan}
             showsHorizontalScrollIndicator={canPan}
             showsVerticalScrollIndicator={canPan}
             bounces={canPan}
             nestedScrollEnabled
-            directionalLockEnabled={false}>
+            directionalLockEnabled={false}
+            scrollEventThrottle={16}
+            onScroll={handleScroll}>
             <Image
               source={{ uri }}
-              style={{ width: contentW, height: contentH }}
+              style={{ width: imageW, height: imageH }}
               resizeMode="contain"
             />
           </ScrollView>
