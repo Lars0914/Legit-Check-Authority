@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
   Dimensions,
+  Image,
+  LayoutChangeEvent,
   Modal,
   Platform,
   Pressable,
@@ -21,6 +22,11 @@ interface Props {
 }
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const BASE_IMAGE_W = SCREEN_W;
+const BASE_IMAGE_H = SCREEN_H * 0.62;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.5;
 
 export function ImageLightbox({
   uri,
@@ -29,54 +35,70 @@ export function ImageLightbox({
   cropHint,
   onClose,
 }: Props) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const scrollRef = useRef<ScrollView>(null);
+  const [zoomLevel, setZoomLevel] = useState(MIN_ZOOM);
+  const [viewport, setViewport] = useState({ w: SCREEN_W, h: SCREEN_H * 0.55 });
+
+  const contentW = BASE_IMAGE_W * zoomLevel;
+  const contentH = BASE_IMAGE_H * zoomLevel;
+  const canPan = zoomLevel > MIN_ZOOM;
+
+  const scrollToCenter = useCallback(
+    (level: number) => {
+      const w = BASE_IMAGE_W * level;
+      const h = BASE_IMAGE_H * level;
+      const x = Math.max(0, (w - viewport.w) / 2);
+      const y = Math.max(0, (h - viewport.h) / 2);
+      scrollRef.current?.scrollTo({ x, y, animated: true });
+    },
+    [viewport.h, viewport.w],
+  );
 
   const resetZoom = useCallback(() => {
-    scale.setValue(1);
-    setZoomLevel(1);
-  }, [scale]);
+    setZoomLevel(MIN_ZOOM);
+    scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+  }, []);
 
   const handleClose = useCallback(() => {
     resetZoom();
     onClose();
   }, [onClose, resetZoom]);
 
-  const toggleZoom = useCallback(() => {
-    const next = zoomLevel >= 2 ? 1 : 2.5;
-    setZoomLevel(next);
-    Animated.spring(scale, {
-      toValue: next,
-      useNativeDriver: true,
-      friction: 7,
-    }).start();
-  }, [scale, zoomLevel]);
+  const applyZoom = useCallback((next: number) => {
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    setZoomLevel(clamped);
+  }, []);
 
   const adjustZoom = useCallback(
     (delta: number) => {
-      const next = Math.min(4, Math.max(1, zoomLevel + delta));
-      setZoomLevel(next);
-      Animated.spring(scale, {
-        toValue: next,
-        useNativeDriver: true,
-        friction: 7,
-      }).start();
+      applyZoom(zoomLevel + delta);
     },
-    [scale, zoomLevel],
+    [applyZoom, zoomLevel],
   );
+
+  const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (width > 0 && height > 0) {
+      setViewport({ w: width, h: height });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!visible) {
+      resetZoom();
+    }
+  }, [visible, resetZoom]);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (zoomLevel <= MIN_ZOOM) {
+      scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+      return;
+    }
+    scrollToCenter(zoomLevel);
+  }, [visible, zoomLevel, viewport.w, viewport.h, scrollToCenter]);
 
   if (!visible) return null;
-
-  const imageNode = (
-    <Animated.Image
-      source={{ uri }}
-      style={[
-        styles.image,
-        Platform.OS === "android" && { transform: [{ scale }] },
-      ]}
-      resizeMode="contain"
-    />
-  );
 
   return (
     <Modal
@@ -98,60 +120,47 @@ export function ImageLightbox({
           </Pressable>
         </View>
 
-        {Platform.OS === "ios" ? (
+        <View style={styles.viewport} onLayout={handleViewportLayout}>
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            maximumZoomScale={4}
-            minimumZoomScale={1}
-            centerContent
-            bouncesZoom
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}>
-            <Pressable onPress={toggleZoom}>
-              <Animated.Image
-                source={{ uri }}
-                style={styles.image}
-                resizeMode="contain"
-              />
-            </Pressable>
+            contentContainerStyle={{
+              width: contentW,
+              height: contentH,
+            }}
+            scrollEnabled={canPan}
+            showsHorizontalScrollIndicator={canPan}
+            showsVerticalScrollIndicator={canPan}
+            bounces={canPan}
+            nestedScrollEnabled
+            directionalLockEnabled={false}>
+            <Image
+              source={{ uri }}
+              style={{ width: contentW, height: contentH }}
+              resizeMode="contain"
+            />
           </ScrollView>
-        ) : (
-          <Pressable style={styles.androidImageWrap} onPress={toggleZoom}>
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              maximumZoomScale={1}
-              minimumZoomScale={1}
-              bounces={false}
-              scrollEnabled={zoomLevel > 1}>
-              {imageNode}
-            </ScrollView>
-          </Pressable>
-        )}
+        </View>
 
         <View style={styles.controls}>
           <Text style={styles.hintText}>
-            {Platform.OS === "ios"
-              ? "Pinch to zoom · Double-tap image · Tap ✕ to close"
-              : "Tap image to zoom · Use +/- buttons"}
+            Use +/- to zoom · Drag to view corners · Tap ✕ to close
           </Text>
-          {Platform.OS === "android" ? (
-            <View style={styles.zoomRow}>
-              <Pressable
-                style={styles.zoomBtn}
-                onPress={() => adjustZoom(-0.5)}
-                disabled={zoomLevel <= 1}>
-                <Text style={styles.zoomBtnText}>−</Text>
-              </Pressable>
-              <Text style={styles.zoomLevel}>{Math.round(zoomLevel * 100)}%</Text>
-              <Pressable
-                style={styles.zoomBtn}
-                onPress={() => adjustZoom(0.5)}
-                disabled={zoomLevel >= 4}>
-                <Text style={styles.zoomBtnText}>+</Text>
-              </Pressable>
-            </View>
-          ) : null}
+          <View style={styles.zoomRow}>
+            <Pressable
+              style={styles.zoomBtn}
+              onPress={() => adjustZoom(-ZOOM_STEP)}
+              disabled={zoomLevel <= MIN_ZOOM}>
+              <Text style={styles.zoomBtnText}>−</Text>
+            </Pressable>
+            <Text style={styles.zoomLevel}>{Math.round(zoomLevel * 100)}%</Text>
+            <Pressable
+              style={styles.zoomBtn}
+              onPress={() => adjustZoom(ZOOM_STEP)}
+              disabled={zoomLevel >= MAX_ZOOM}>
+              <Text style={styles.zoomBtnText}>+</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -196,21 +205,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  scroll: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: SCREEN_H * 0.55,
-  },
-  androidImageWrap: {
+  viewport: {
     flex: 1,
-    justifyContent: "center",
+    overflow: "hidden",
   },
-  image: {
-    width: SCREEN_W,
-    height: SCREEN_H * 0.62,
-  },
+  scroll: { flex: 1 },
   controls: {
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 36 : 24,

@@ -119,11 +119,8 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     <ScreenChrome>
       <View style={styles.container}>
         <View style={styles.hero}>
-          <View style={styles.heroRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>ARCHIVE</Text>
-            </View>
-            {AUTH_ENABLED ? (
+          {AUTH_ENABLED ? (
+            <View style={styles.heroRow}>
               <View style={styles.heroActions}>
                 {showPayments && onOpenSubscription ? (
                   <Pressable onPress={onOpenSubscription} hitSlop={8}>
@@ -134,8 +131,8 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
                   <Text style={styles.signOut}>Sign out</Text>
                 </Pressable>
               </View>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
           <Text style={styles.heading}>{APP_DISPLAY_NAME}</Text>
           {AUTH_ENABLED && user ? (
             <Text style={styles.sub}>
@@ -276,7 +273,7 @@ const styles = StyleSheet.create({
   heroRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     marginBottom: theme.spacing.sm,
   },
   heroActions: {
@@ -293,20 +290,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: theme.colors.accent,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.borderBright,
-    backgroundColor: "rgba(8, 145, 178, 0.1)",
-  },
-  badgeText: {
-    ...theme.font.label,
-    color: theme.colors.accentCyan,
-    fontSize: 10,
   },
   heading: {
     ...theme.font.hero,
