@@ -34,20 +34,6 @@ interface FlatResult {
   model: ArchiveModel;
 }
 
-const QUICK_SEARCHES = [
-  { label: "Royal Oak", query: "royal oak" },
-  { label: "Daytona", query: "daytona" },
-  { label: "Nautilus", query: "nautilus" },
-  { label: "Submariner", query: "submariner" },
-];
-
-const BRAND_FILTERS = [
-  { label: "Rolex", query: "rolex" },
-  { label: "AP", query: "ap" },
-  { label: "Patek", query: "pp" },
-  { label: "RM", query: "rm" },
-];
-
 function modelKey(brandSlug: string, modelSlug: string): string {
   return `${brandSlug}:${modelSlug}`;
 }
@@ -461,82 +447,6 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     </View>
   );
 
-  const popularChips = (
-    <View style={styles.chipsSection}>
-      <Text style={styles.chipsLabel}>Popular models</Text>
-      {isWide ? (
-        <View style={[styles.chipsRow, styles.chipsRowWrap]}>
-          {QUICK_SEARCHES.map((item) => (
-            <Pressable
-              key={item.query}
-              style={({ pressed }) => [
-                styles.chip,
-                pressed && styles.chipPressed,
-              ]}
-              onPress={() => setQuery(item.query)}>
-              <Text style={styles.chipText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}>
-          {QUICK_SEARCHES.map((item) => (
-            <Pressable
-              key={item.query}
-              style={({ pressed }) => [
-                styles.chip,
-                pressed && styles.chipPressed,
-              ]}
-              onPress={() => setQuery(item.query)}>
-              <Text style={styles.chipText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-
-  const brandChips = (
-    <View style={styles.chipsSection}>
-      <Text style={styles.chipsLabel}>Browse by brand</Text>
-      {isWide ? (
-        <View style={[styles.chipsRow, styles.chipsRowWrap]}>
-          {BRAND_FILTERS.map((item) => (
-            <Pressable
-              key={item.query}
-              style={({ pressed }) => [
-                styles.chipGold,
-                pressed && styles.chipPressed,
-              ]}
-              onPress={() => setQuery(item.query)}>
-              <Text style={styles.chipGoldText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}>
-          {BRAND_FILTERS.map((item) => (
-            <Pressable
-              key={item.query}
-              style={({ pressed }) => [
-                styles.chipGold,
-                pressed && styles.chipPressed,
-              ]}
-              onPress={() => setQuery(item.query)}>
-              <Text style={styles.chipGoldText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-
   if (isWide) {
     const selectedImages = expandedModel
       ? modelImages[expandedModel] ?? []
@@ -560,8 +470,6 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             ) : null}
 
             {searchBar}
-            {!isSearching ? popularChips : null}
-            {!isSearching ? brandChips : null}
 
             <View style={styles.sidebarSectionHeader}>
               <Text style={styles.sectionLabel}>
@@ -646,9 +554,6 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
         ) : null}
 
         {searchBar}
-
-        {!isSearching ? popularChips : null}
-        {!isSearching ? brandChips : null}
 
         {loading ? (
           <ActivityIndicator
@@ -786,45 +691,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
-  },
-  chipsSection: {
-    marginBottom: theme.spacing.sm,
-  },
-  chipsLabel: {
-    ...theme.font.label,
-    color: theme.colors.textMuted,
-    marginBottom: 8,
-  },
-  chipsRow: {
-    gap: 8,
-    paddingRight: 4,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  chipGold: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(180, 83, 9, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(180, 83, 9, 0.22)",
-  },
-  chipPressed: { opacity: 0.82 },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  chipGoldText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: theme.colors.accentGold,
   },
   loader: { marginVertical: 12 },
   error: { color: theme.colors.error, marginBottom: 8 },
@@ -1088,10 +954,6 @@ const styles = StyleSheet.create({
   },
   searchShellWide: {
     marginBottom: theme.spacing.md,
-  },
-  chipsRowWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
   },
   wideBrandBlock: {
     marginBottom: 8,
