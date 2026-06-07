@@ -18,8 +18,10 @@ import {
   paymentsUiEnabled,
 } from "../config";
 import { ArchiveImage } from "../components/ArchiveImage";
+import { ArchiveImageViewer } from "../components/ArchiveImageViewer";
 import { ScreenChrome } from "../components/ScreenChrome";
 import { prefetchArchiveImages } from "../lib/imageUrl";
+import { useResponsiveLayout } from "../lib/responsive";
 import { theme } from "../theme";
 import type { ArchiveBrand, ArchiveImage as ArchiveImageType, ArchiveModel } from "../types/api";
 
@@ -107,7 +109,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     Record<string, ArchiveImageType[]>
   >({});
   const [loadingModel, setLoadingModel] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const autoOpenedRef = useRef<string | null>(null);
+
+  const { isWide, sidebarWidth } = useResponsiveLayout();
 
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length > 0;
@@ -177,10 +182,23 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
       const key = modelKey(brandSlug, modelSlug);
       setExpandedBrand(brandSlug);
       setExpandedModel(key);
+      setSelectedImageIndex(0);
       loadModelImages(brandSlug, modelSlug);
     },
     [loadModelImages],
   );
+
+  const selectedMeta = useMemo(() => {
+    if (!expandedModel) return null;
+    for (const brand of brands) {
+      for (const model of brand.models) {
+        if (modelKey(brand.slug, model.slug) === expandedModel) {
+          return { brand, model };
+        }
+      }
+    }
+    return null;
+  }, [brands, expandedModel]);
 
   const toggleBrand = useCallback((brandSlug: string) => {
     setExpandedBrand((prev) => (prev === brandSlug ? null : brandSlug));
@@ -240,9 +258,33 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     );
   };
 
-  const renderSearchResult = ({ brand, model }: FlatResult) => {
+  const renderSearchResult = ({ brand, model }: FlatResult, wide = false) => {
     const key = modelKey(brand.slug, model.slug);
     const open = expandedModel === key;
+
+    if (wide) {
+      return (
+        <Pressable
+          key={key}
+          style={({ pressed }) => [
+            styles.wideModelRow,
+            open && styles.wideModelRowActive,
+            pressed && styles.rowPressed,
+          ]}
+          onPress={() => openModel(brand.slug, model.slug)}>
+          <View style={styles.wideModelBody}>
+            <Text style={styles.wideModelBrand}>{brand.name}</Text>
+            <HighlightText
+              text={model.name}
+              query={trimmedQuery}
+              style={styles.wideModelTitle}
+              highlightStyle={styles.highlight}
+            />
+          </View>
+          <Text style={styles.wideModelCount}>{model.imageCount}</Text>
+        </Pressable>
+      );
+    }
 
     return (
       <View key={key} style={[styles.resultCard, open && styles.resultCardOpen]}>
@@ -280,8 +322,53 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     );
   };
 
-  const renderBrowseBrand = (brand: ArchiveBrand) => {
+  const renderBrowseBrand = (brand: ArchiveBrand, wide = false) => {
     const brandOpen = expandedBrand === brand.slug;
+
+    if (wide) {
+      return (
+        <View key={brand.id} style={styles.wideBrandBlock}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.wideBrandRow,
+              brandOpen && styles.wideBrandRowOpen,
+              pressed && styles.rowPressed,
+            ]}
+            onPress={() => toggleBrand(brand.slug)}>
+            <Text style={styles.wideBrandTitle} numberOfLines={1}>
+              {brand.name}
+            </Text>
+            <Text style={styles.wideBrandChevron}>{brandOpen ? "▴" : "▾"}</Text>
+          </Pressable>
+          {brandOpen
+            ? brand.models.map((model) => {
+                const key = modelKey(brand.slug, model.slug);
+                const selected = expandedModel === key;
+                return (
+                  <Pressable
+                    key={model.id}
+                    style={({ pressed }) => [
+                      styles.wideModelRow,
+                      selected && styles.wideModelRowActive,
+                      pressed && styles.rowPressed,
+                    ]}
+                    onPress={() => openModel(brand.slug, model.slug)}>
+                    <Text
+                      style={[
+                        styles.wideModelTitle,
+                        selected && styles.wideModelTitleActive,
+                      ]}
+                      numberOfLines={2}>
+                      {model.name}
+                    </Text>
+                    <Text style={styles.wideModelCount}>{model.imageCount}</Text>
+                  </Pressable>
+                );
+              })
+            : null}
+        </View>
+      );
+    }
 
     return (
       <View key={brand.id} style={styles.brandCard}>
@@ -339,6 +426,190 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     );
   };
 
+  const clearSearch = () => {
+    setQuery("");
+    setExpandedBrand(null);
+    setExpandedModel(null);
+    setSelectedImageIndex(0);
+  };
+
+  const searchBar = (
+    <View
+      style={[
+        styles.searchShell,
+        isWide && styles.searchShellWide,
+        focused && styles.searchShellFocused,
+      ]}>
+      <Text style={styles.searchIcon}>⌕</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Search model, reference, or brand…"
+        placeholderTextColor={theme.colors.textMuted}
+        value={query}
+        onChangeText={setQuery}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+      {query.length > 0 ? (
+        <Pressable onPress={clearSearch} hitSlop={8} style={styles.clearBtn}>
+          <Text style={styles.clearBtnText}>✕</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  const popularChips = (
+    <View style={styles.chipsSection}>
+      <Text style={styles.chipsLabel}>Popular models</Text>
+      {isWide ? (
+        <View style={[styles.chipsRow, styles.chipsRowWrap]}>
+          {QUICK_SEARCHES.map((item) => (
+            <Pressable
+              key={item.query}
+              style={({ pressed }) => [
+                styles.chip,
+                pressed && styles.chipPressed,
+              ]}
+              onPress={() => setQuery(item.query)}>
+              <Text style={styles.chipText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}>
+          {QUICK_SEARCHES.map((item) => (
+            <Pressable
+              key={item.query}
+              style={({ pressed }) => [
+                styles.chip,
+                pressed && styles.chipPressed,
+              ]}
+              onPress={() => setQuery(item.query)}>
+              <Text style={styles.chipText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  const brandChips = (
+    <View style={styles.chipsSection}>
+      <Text style={styles.chipsLabel}>Browse by brand</Text>
+      {isWide ? (
+        <View style={[styles.chipsRow, styles.chipsRowWrap]}>
+          {BRAND_FILTERS.map((item) => (
+            <Pressable
+              key={item.query}
+              style={({ pressed }) => [
+                styles.chipGold,
+                pressed && styles.chipPressed,
+              ]}
+              onPress={() => setQuery(item.query)}>
+              <Text style={styles.chipGoldText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}>
+          {BRAND_FILTERS.map((item) => (
+            <Pressable
+              key={item.query}
+              style={({ pressed }) => [
+                styles.chipGold,
+                pressed && styles.chipPressed,
+              ]}
+              onPress={() => setQuery(item.query)}>
+              <Text style={styles.chipGoldText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  if (isWide) {
+    const selectedImages = expandedModel
+      ? modelImages[expandedModel] ?? []
+      : [];
+
+    return (
+      <ScreenChrome>
+        <View style={styles.wideRoot}>
+          <View style={[styles.sidebar, { width: sidebarWidth }]}>
+            <Text style={styles.sidebarHeading}>{APP_DISPLAY_NAME}</Text>
+            {AUTH_ENABLED && user ? (
+              <Text style={styles.sidebarGreeting}>
+                Hi {user.mail.split("@")[0]}
+              </Text>
+            ) : null}
+
+            {apiOk === false ? (
+              <View style={styles.banner}>
+                <Text style={styles.bannerText}>Cannot reach API.</Text>
+              </View>
+            ) : null}
+
+            {searchBar}
+            {!isSearching ? popularChips : null}
+            {!isSearching ? brandChips : null}
+
+            <View style={styles.sidebarSectionHeader}>
+              <Text style={styles.sectionLabel}>
+                {isSearching ? "Results" : "All brands"}
+              </Text>
+              <Text style={styles.sectionCount}>
+                {isSearching
+                  ? `${flatResults.length}`
+                  : `${totalModels}`}
+              </Text>
+            </View>
+
+            {loading ? (
+              <ActivityIndicator color={theme.colors.accentGold} />
+            ) : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <ScrollView
+              style={styles.sidebarList}
+              contentContainerStyle={styles.sidebarListContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              {!loading && isSearching && flatResults.length === 0 && !error ? (
+                <Text style={styles.sidebarEmpty}>No models found.</Text>
+              ) : null}
+              {isSearching
+                ? flatResults.map((item) => renderSearchResult(item, true))
+                : brands.map((brand) => renderBrowseBrand(brand, true))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.mainPanel}>
+            <ArchiveImageViewer
+              brandName={selectedMeta?.brand.name ?? ""}
+              modelName={selectedMeta?.model.name ?? ""}
+              images={selectedImages}
+              index={selectedImageIndex}
+              loading={Boolean(
+                expandedModel && loadingModel === expandedModel,
+              )}
+              onIndexChange={setSelectedImageIndex}
+            />
+          </View>
+        </View>
+      </ScreenChrome>
+    );
+  }
+
   return (
     <ScreenChrome>
       <View style={styles.container}>
@@ -374,81 +645,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
           </View>
         ) : null}
 
-        <View
-          style={[
-            styles.searchShell,
-            focused && styles.searchShellFocused,
-          ]}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Search model, reference, or brand…"
-            placeholderTextColor={theme.colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-          />
-          {query.length > 0 ? (
-            <Pressable
-              onPress={() => {
-                setQuery("");
-                setExpandedBrand(null);
-                setExpandedModel(null);
-              }}
-              hitSlop={8}
-              style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>✕</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {searchBar}
 
-        {!isSearching ? (
-          <View style={styles.chipsSection}>
-            <Text style={styles.chipsLabel}>Popular models</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}>
-              {QUICK_SEARCHES.map((item) => (
-                <Pressable
-                  key={item.query}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    pressed && styles.chipPressed,
-                  ]}
-                  onPress={() => setQuery(item.query)}>
-                  <Text style={styles.chipText}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {!isSearching ? (
-          <View style={styles.chipsSection}>
-            <Text style={styles.chipsLabel}>Browse by brand</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}>
-              {BRAND_FILTERS.map((item) => (
-                <Pressable
-                  key={item.query}
-                  style={({ pressed }) => [
-                    styles.chipGold,
-                    pressed && styles.chipPressed,
-                  ]}
-                  onPress={() => setQuery(item.query)}>
-                  <Text style={styles.chipGoldText}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
+        {!isSearching ? popularChips : null}
+        {!isSearching ? brandChips : null}
 
         {loading ? (
           <ActivityIndicator
@@ -484,8 +684,8 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
           ) : null}
 
           {isSearching
-            ? flatResults.map(renderSearchResult)
-            : brands.map(renderBrowseBrand)}
+            ? flatResults.map((item) => renderSearchResult(item, false))
+            : brands.map((brand) => renderBrowseBrand(brand, false))}
         </ScrollView>
       </View>
     </ScreenChrome>
@@ -845,4 +1045,126 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   rowPressed: { opacity: 0.86 },
+  wideRoot: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  sidebar: {
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+  },
+  sidebarHeading: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  sidebarGreeting: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  sidebarSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm,
+    marginTop: 4,
+  },
+  sidebarList: { flex: 1 },
+  sidebarListContent: { paddingBottom: theme.spacing.lg },
+  sidebarEmpty: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    textAlign: "center",
+    paddingVertical: 16,
+  },
+  mainPanel: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
+  searchShellWide: {
+    marginBottom: theme.spacing.md,
+  },
+  chipsRowWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  wideBrandBlock: {
+    marginBottom: 8,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: "hidden",
+    backgroundColor: theme.colors.bg,
+  },
+  wideBrandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.surface,
+  },
+  wideBrandRowOpen: {
+    backgroundColor: "#FFFCF7",
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  wideBrandTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: theme.colors.text,
+    paddingRight: 8,
+  },
+  wideBrandChevron: {
+    fontSize: 12,
+    color: theme.colors.accentGold,
+  },
+  wideModelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    paddingLeft: 18,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.bg,
+  },
+  wideModelRowActive: {
+    backgroundColor: "rgba(180, 83, 9, 0.1)",
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.accentGold,
+    paddingLeft: 15,
+  },
+  wideModelBody: { flex: 1, paddingRight: 8 },
+  wideModelBrand: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: theme.colors.accentGold,
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  wideModelTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.text,
+    lineHeight: 18,
+  },
+  wideModelTitleActive: {
+    color: theme.colors.accentGold,
+  },
+  wideModelCount: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.colors.textMuted,
+    minWidth: 18,
+    textAlign: "right",
+  },
 });
