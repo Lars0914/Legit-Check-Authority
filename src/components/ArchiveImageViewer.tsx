@@ -1,18 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   LayoutChangeEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useZoomableImage } from "../hooks/useZoomableImage";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
-import { ZoomableImageView } from "./ZoomableImageView";
 
 interface Props {
   brandName: string;
@@ -35,16 +34,17 @@ export function ArchiveImageViewer({
   const fullUri = current
     ? resolveArchiveImageUrl(current.url, "full")
     : "";
-  const [viewerSize, setViewerSize] = useState({ w: 640, h: 480 });
-  const hasMultiple = images.length > 1;
+  const [frameSize, setFrameSize] = useState({ w: 1, h: 1 });
+  const zoom = useZoomableImage(frameSize.w, frameSize.h);
 
-  const handleViewerLayout = (event: LayoutChangeEvent) => {
+  useEffect(() => {
+    zoom.resetZoom();
+  }, [current?.storagePath, zoom.resetZoom]);
+
+  const handleFrameLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     if (width <= 0 || height <= 0) return;
-    setViewerSize({
-      w: Math.round(width * 0.94),
-      h: Math.round(height * 0.82),
-    });
+    setFrameSize({ w: Math.round(width), h: Math.round(height) });
   };
 
   const goPrevious = () => {
@@ -75,97 +75,113 @@ export function ArchiveImageViewer({
     );
   }
 
+  const canGoPrevious = index > 0;
+  const canGoNext = index < images.length - 1;
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.brand}>{brandName}</Text>
-          <Text style={styles.model} numberOfLines={2}>
-            {modelName}
-          </Text>
-        </View>
-        {hasMultiple ? (
-          <Text style={styles.counter}>
-            {index + 1} / {images.length}
-          </Text>
-        ) : null}
+      <View style={styles.captionBar}>
+        <Text style={styles.captionBrand} numberOfLines={1}>
+          {brandName}
+        </Text>
+        <Text style={styles.captionModel} numberOfLines={1}>
+          {modelName}
+        </Text>
       </View>
 
-      <View style={styles.viewerFrame} onLayout={handleViewerLayout}>
-        <ZoomableImageView
-          uri={fullUri}
-          resetKey={current.storagePath}
-          baseWidth={viewerSize.w}
-          baseHeight={viewerSize.h}
-          controlsTheme="light"
-        />
-      </View>
-
-      {hasMultiple ? (
-        <View style={styles.footer}>
-          <View style={styles.navRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.navBtn,
-                index <= 0 && styles.navBtnDisabled,
-                pressed && index > 0 && styles.navBtnPressed,
-              ]}
-              onPress={goPrevious}
-              disabled={index <= 0}>
-              <Text
-                style={[
-                  styles.navBtnText,
-                  index <= 0 && styles.navBtnTextDisabled,
-                ]}>
-                ‹ Previous
-              </Text>
-            </Pressable>
-
-            <Text style={styles.navCounter}>
-              Photo {index + 1} of {images.length}
-            </Text>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.navBtn,
-                index >= images.length - 1 && styles.navBtnDisabled,
-                pressed && index < images.length - 1 && styles.navBtnPressed,
-              ]}
-              onPress={goNext}
-              disabled={index >= images.length - 1}>
-              <Text
-                style={[
-                  styles.navBtnText,
-                  index >= images.length - 1 && styles.navBtnTextDisabled,
-                ]}>
-                Next ›
-              </Text>
-            </Pressable>
+      <View style={styles.viewerFrame} onLayout={handleFrameLayout}>
+        <View
+          style={styles.viewport}
+          onLayout={zoom.handleViewportLayout}
+          {...zoom.panHandlers}>
+          <View
+            style={[
+              styles.stage,
+              { width: zoom.viewport.w, height: zoom.viewport.h },
+            ]}>
+            <View
+              style={{
+                width: zoom.baseW,
+                height: zoom.baseH,
+                transform: [
+                  { translateX: zoom.offset.x },
+                  { translateY: zoom.offset.y },
+                  { scale: zoom.zoomLevel },
+                ],
+              }}>
+              <Image
+                source={{ uri: fullUri }}
+                style={{ width: zoom.baseW, height: zoom.baseH }}
+                resizeMode="contain"
+              />
+            </View>
           </View>
-
-          <Text style={styles.thumbLabel}>All photos — tap to jump</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator
-            contentContainerStyle={styles.thumbRow}>
-            {images.map((image, i) => {
-              const thumbUri = resolveArchiveImageUrl(image.url, "thumb");
-              const active = i === index;
-              return (
-                <Pressable
-                  key={image.storagePath}
-                  onPress={() => onIndexChange(i)}
-                  style={[styles.thumbWrap, active && styles.thumbWrapActive]}>
-                  <Image source={{ uri: thumbUri }} style={styles.thumb} />
-                  <Text style={[styles.thumbIndex, active && styles.thumbIndexActive]}>
-                    {i + 1}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
         </View>
-      ) : null}
+      </View>
+
+      <View style={styles.toolbar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.toolbarBtn,
+            styles.toolbarBtnWide,
+            !canGoPrevious && styles.toolbarBtnDisabled,
+            pressed && canGoPrevious && styles.toolbarBtnPressed,
+          ]}
+          onPress={goPrevious}
+          disabled={!canGoPrevious}>
+          <Text
+            style={[
+              styles.toolbarBtnText,
+              !canGoPrevious && styles.toolbarBtnTextDisabled,
+            ]}>
+            Previous
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.toolbarBtn,
+            zoom.zoomLevel <= zoom.minZoom && styles.toolbarBtnDisabled,
+            pressed && styles.toolbarBtnPressed,
+          ]}
+          onPress={() => zoom.adjustZoom(-zoom.zoomStep)}
+          disabled={zoom.zoomLevel <= zoom.minZoom}>
+          <Text style={styles.toolbarBtnSymbol}>−</Text>
+        </Pressable>
+
+        <Text style={styles.toolbarCounter}>
+          {index + 1} / {images.length}
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.toolbarBtn,
+            zoom.zoomLevel >= zoom.maxZoom && styles.toolbarBtnDisabled,
+            pressed && styles.toolbarBtnPressed,
+          ]}
+          onPress={() => zoom.adjustZoom(zoom.zoomStep)}
+          disabled={zoom.zoomLevel >= zoom.maxZoom}>
+          <Text style={styles.toolbarBtnSymbol}>+</Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.toolbarBtn,
+            styles.toolbarBtnWide,
+            !canGoNext && styles.toolbarBtnDisabled,
+            pressed && canGoNext && styles.toolbarBtnPressed,
+          ]}
+          onPress={goNext}
+          disabled={!canGoNext}>
+          <Text
+            style={[
+              styles.toolbarBtnText,
+              !canGoNext && styles.toolbarBtnTextDisabled,
+            ]}>
+            Next
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -173,7 +189,7 @@ export function ArchiveImageViewer({
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.bg,
   },
   centered: {
     flex: 1,
@@ -199,120 +215,85 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 360,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing.md,
+  captionBar: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
   },
-  headerText: { flex: 1, paddingRight: 12 },
-  brand: {
+  captionBrand: {
     ...theme.font.label,
     color: theme.colors.accentGold,
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  model: {
-    fontSize: 22,
+  captionModel: {
+    fontSize: 15,
     fontWeight: "700",
     color: theme.colors.text,
-    lineHeight: 28,
-  },
-  counter: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: theme.colors.textMuted,
-    marginTop: 4,
   },
   viewerFrame: {
     flex: 1,
-    minHeight: 240,
-    borderRadius: theme.radius.lg,
+    marginHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.imageBg,
     overflow: "hidden",
   },
-  footer: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+  viewport: {
+    flex: 1,
+    overflow: "hidden",
   },
-  navRow: {
+  stage: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toolbar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: theme.spacing.md,
-  },
-  navBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: theme.radius.md,
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
+  },
+  toolbarBtn: {
+    minWidth: 44,
+    height: 44,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    minWidth: 110,
+    backgroundColor: theme.colors.bg,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
   },
-  navBtnPressed: { opacity: 0.85 },
-  navBtnDisabled: {
-    opacity: 0.45,
+  toolbarBtnWide: {
+    minWidth: 96,
+    paddingHorizontal: 16,
   },
-  navBtnText: {
+  toolbarBtnPressed: { opacity: 0.85 },
+  toolbarBtnDisabled: { opacity: 0.4 },
+  toolbarBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: theme.colors.accentGold,
+    color: theme.colors.text,
   },
-  navBtnTextDisabled: {
+  toolbarBtnTextDisabled: {
     color: theme.colors.textMuted,
   },
-  navCounter: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 13,
+  toolbarBtnSymbol: {
+    fontSize: 22,
     fontWeight: "600",
-    color: theme.colors.textSecondary,
+    color: theme.colors.text,
+    lineHeight: 24,
   },
-  thumbLabel: {
-    ...theme.font.label,
-    color: theme.colors.textMuted,
-    marginBottom: 8,
-  },
-  thumbRow: {
-    gap: 10,
-    paddingBottom: 4,
-  },
-  thumbWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.radius.sm,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-    backgroundColor: theme.colors.imageBg,
-  },
-  thumbWrapActive: {
-    borderColor: theme.colors.accentGold,
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbIndex: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    backgroundColor: "rgba(15, 23, 42, 0.65)",
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  thumbIndexActive: {
-    backgroundColor: theme.colors.accentGold,
+  toolbarCounter: {
+    minWidth: 72,
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "700",
+    color: theme.colors.text,
   },
 });
