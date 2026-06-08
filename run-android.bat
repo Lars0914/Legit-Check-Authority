@@ -30,7 +30,6 @@ if errorlevel 1 (
 )
 
 adb reverse tcp:8081 tcp:8081 >nul 2>&1
-adb reverse tcp:3001 tcp:3001 >nul 2>&1
 
 echo Building and installing...
 call npx react-native run-android --no-packager --port 8081

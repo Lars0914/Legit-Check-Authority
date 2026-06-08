@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  type TextLayoutEvent,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -15,9 +16,10 @@ import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
 
-const IMAGE_HEIGHT_RATIO = 0.7;
-const INSIGHT_HEIGHT_RATIO = 0.25;
+const MAX_INSIGHT_HEIGHT_RATIO = 0.25;
 const TOOLBAR_HEIGHT_RATIO = 0.05;
+const INSIGHT_PADDING_VERTICAL = 16;
+const INSIGHT_LINE_HEIGHT = 15;
 
 interface Props {
   brandName: string;
@@ -37,9 +39,9 @@ export function ArchiveImageViewer({
   onIndexChange,
 }: Props) {
   const { height: screenHeight } = useWindowDimensions();
-  const imageSectionHeight = Math.round(screenHeight * IMAGE_HEIGHT_RATIO);
-  const insightSectionHeight = Math.round(screenHeight * INSIGHT_HEIGHT_RATIO);
+  const maxInsightHeight = Math.round(screenHeight * MAX_INSIGHT_HEIGHT_RATIO);
   const toolbarHeight = Math.round(screenHeight * TOOLBAR_HEIGHT_RATIO);
+  const [textHeight, setTextHeight] = useState<number | null>(null);
 
   const current = images[index];
   const fullUri = current
@@ -51,6 +53,32 @@ export function ArchiveImageViewer({
   useEffect(() => {
     zoom.resetZoom();
   }, [current?.storagePath, zoom.resetZoom]);
+
+  useEffect(() => {
+    setTextHeight(null);
+  }, [current?.storagePath, current?.description]);
+
+  const insightMeasured = textHeight !== null && textHeight > 0;
+  const contentWithPadding = insightMeasured
+    ? textHeight + INSIGHT_PADDING_VERTICAL
+    : 0;
+  const insightMinHeight = INSIGHT_LINE_HEIGHT + INSIGHT_PADDING_VERTICAL;
+  const insightBoxHeight = current?.description
+    ? Math.min(Math.max(contentWithPadding, insightMinHeight), maxInsightHeight)
+    : 0;
+  const insightScrollable =
+    insightMeasured && contentWithPadding > maxInsightHeight;
+
+  const handleInsightTextLayout = (event: TextLayoutEvent) => {
+    const lines = event.nativeEvent.lines;
+    if (lines.length === 0) return;
+    const measured = Math.ceil(
+      lines.reduce((sum, line) => sum + line.height, 0),
+    );
+    if (measured > 0) {
+      setTextHeight((prev) => Math.max(prev ?? 0, measured));
+    }
+  };
 
   const handleFrameLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -91,7 +119,7 @@ export function ArchiveImageViewer({
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.imageSection, { height: imageSectionHeight }]}>
+      <View style={styles.imageSection}>
         <View style={styles.captionBar}>
           <Text style={styles.captionBrand} numberOfLines={1}>
             {brandName}
@@ -132,16 +160,34 @@ export function ArchiveImageViewer({
         </View>
       </View>
 
-      <ScrollView
-        style={[styles.insightScroll, { height: insightSectionHeight }]}
-        contentContainerStyle={styles.insightScrollContent}
-        showsVerticalScrollIndicator>
-        {current.description ? (
-          <Text style={styles.insightText}>{current.description}</Text>
-        ) : null}
-      </ScrollView>
+      {current.description ? (
+        <>
+          {!insightMeasured ? (
+            <View style={styles.insightMeasure} pointerEvents="none">
+              <Text
+                style={styles.insightText}
+                onTextLayout={handleInsightTextLayout}>
+                {current.description}
+              </Text>
+            </View>
+          ) : null}
+          <ScrollView
+            style={[
+              styles.insightScroll,
+              insightMeasured
+                ? { height: insightBoxHeight }
+                : { maxHeight: maxInsightHeight },
+            ]}
+            contentContainerStyle={styles.insightScrollContent}
+            showsVerticalScrollIndicator={insightScrollable}
+            scrollEnabled={insightScrollable}
+            nestedScrollEnabled>
+            <Text style={styles.insightText}>{current.description}</Text>
+          </ScrollView>
+        </>
+      ) : null}
 
-      <View style={[styles.toolbar, { height: toolbarHeight }]}>
+      <View style={[styles.toolbar, { minHeight: Math.max(toolbarHeight, 44) }]}>
         <Pressable
           style={({ pressed }) => [
             styles.toolbarBtn,
@@ -223,6 +269,7 @@ const styles = StyleSheet.create({
     maxWidth: 360,
   },
   imageSection: {
+    flex: 1,
     paddingHorizontal: theme.spacing.sm,
   },
   captionBar: {
@@ -257,14 +304,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  insightMeasure: {
+    position: "absolute",
+    opacity: 0,
+    left: theme.spacing.sm,
+    right: theme.spacing.sm,
+    paddingHorizontal: 12,
+    zIndex: -1,
+  },
   insightScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
     marginHorizontal: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderBright,
+    overflow: "hidden",
   },
   insightScrollContent: {
+    flexGrow: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -280,6 +341,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
     paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
@@ -293,8 +355,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
-    marginBottom: 6,
+    marginTop: 4,
+    marginBottom: 4,
   },
   toolbarBtnPressed: { opacity: 0.85 },
   toolbarBtnDisabled: { opacity: 0.4 },

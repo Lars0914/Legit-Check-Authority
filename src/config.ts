@@ -12,29 +12,11 @@ export const PAYMENTS_ENABLED = false;
 
 /** When true: npm install @stripe/stripe-react-native@^0.58.0 and wire src/payments/useStripe.ts */
 
-/**
- * Android emulator: 10.0.2.2 maps to the host machine's localhost.
- * iOS simulator: localhost. Physical device: use your PC's LAN IP.
- */
-/** Set to your Vercel (or other) HTTPS API before Play Store / App Store release. */
+/** Production API (Vercel). Used for local dev and release builds — no local backend required. */
 export const PRODUCTION_API_BASE_URL =
   "https://ticker-backend-six.vercel.app";
 
-const DEV_API_HOST =
-  Platform.OS === "android" ? "10.0.2.2" : "localhost";
-
-const DEV_API_BASE_URL = `http://${DEV_API_HOST}:3001`;
-
-/**
- * false (default): emulator uses Vercel API — works without local backend.
- * true: use DEV_API_BASE_URL; run `cd backend && npm run dev` and use run.bat (adb reverse :3001).
- */
-const USE_LOCAL_API_IN_DEV = false;
-
-export const API_BASE_URL =
-  __DEV__ && USE_LOCAL_API_IN_DEV
-    ? DEV_API_BASE_URL
-    : PRODUCTION_API_BASE_URL;
+export const API_BASE_URL = PRODUCTION_API_BASE_URL;
 
 /**
  * OAuth 2.0 **Web application** client ID (Credentials → Web application — NOT Android).

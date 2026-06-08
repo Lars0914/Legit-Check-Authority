@@ -466,7 +466,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
 
             {apiOk === false ? (
               <View style={styles.banner}>
-                <Text style={styles.bannerText}>Cannot reach API.</Text>
+                <Text style={styles.bannerText}>
+                  Cannot reach API. Check your internet connection.
+                </Text>
+                <Text style={styles.bannerUrl}>{API_BASE_URL}</Text>
               </View>
             ) : null}
 
@@ -548,7 +551,7 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
         {apiOk === false ? (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>
-              Cannot reach API. Start backend: npm run dev
+              Cannot reach API. Check your internet connection.
             </Text>
             <Text style={styles.bannerUrl}>{API_BASE_URL}</Text>
           </View>

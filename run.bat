@@ -1,131 +1,141 @@
 @echo off
-REM Ticker — one script: emulator, Metro, install/launch app.
-REM   run.bat          fast if app already installed (~20-30s)
-REM   run.bat rebuild  full native build (~1-3 min first time or after native changes)
+REM DEV MODE - open app on emulator for fast UI work. Does NOT build an APK.
+REM   run.bat          daily dev (fast - no Gradle if app already installed)
+REM   run.bat install  first-time install on emulator (slow, once)
+REM   run.bat rebuild  after native/Android changes only
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
-title Ticker - Run
+title Legit Check Authority - DEV
 
 set "AVD_NAME=Resizable_Experimental"
 set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
-set "FORCE_REBUILD=0"
-if /I "%~1"=="rebuild" set "FORCE_REBUILD=1"
-if /I "%~1"=="clean" set "FORCE_REBUILD=1"
+set "MODE=dev"
+if /I "%~1"=="install" set "MODE=install"
+if /I "%~1"=="rebuild" set "MODE=rebuild"
+if /I "%~1"=="clean" set "MODE=rebuild"
 
-echo ========================================
-echo  Ticker (React Native)
-echo ========================================
+echo.
+echo  DEV MODE - UI preview on emulator (not an APK build)
+echo  API: https://ticker-backend-six.vercel.app
 echo.
 
 where node >nul 2>&1
 if errorlevel 1 (
-  echo ERROR: Node.js is not installed or not on PATH.
-  echo Install from https://nodejs.org/ then run this again.
+  echo ERROR: Install Node 22 or newer from nodejs.org
   goto :fail
 )
+
+for /f "tokens=2 delims=v." %%v in ('node -v 2^>nul') do set "NODE_MAJOR=%%v"
+if not defined NODE_MAJOR goto :fail_node
+if !NODE_MAJOR! LSS 22 goto :fail_node
 
 if not exist "%ANDROID_HOME%\platform-tools\adb.exe" (
-  echo ERROR: Android SDK not found at:
-  echo   %ANDROID_HOME%
-  echo Install Android Studio and the Android SDK.
+  echo ERROR: Android SDK not found. Install Android Studio.
   goto :fail
 )
-
 set "PATH=%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\emulator;%PATH%"
 
 if not exist "node_modules\" (
-  echo Installing npm dependencies...
+  echo Installing npm packages - first time only
   call npm install
-  if errorlevel 1 (
-    echo ERROR: npm install failed.
-    goto :fail
-  )
-  echo.
+  if errorlevel 1 goto :fail
 )
 
-echo Checking for emulator or device...
-adb devices
-
+echo [1/4] Emulator / device
 adb devices 2>nul | findstr /r "device$" | findstr /v "List" >nul
 if errorlevel 1 goto :start_emulator
-goto :after_emulator
+goto :device_ok
 
 :start_emulator
-echo.
-echo No emulator running. Starting %AVD_NAME% ...
+echo   Starting emulator %AVD_NAME%
 start "Android Emulator" /D "%ANDROID_HOME%\emulator" emulator.exe -avd %AVD_NAME%
-echo Waiting for emulator (up to 2 minutes)...
+echo   Waiting for emulator to boot
 adb wait-for-device
 set /a WAIT=0
 
 :wait_boot
 set "BOOT="
 for /f "delims=" %%i in ('adb shell getprop sys.boot_completed 2^>nul') do set "BOOT=%%i"
-if "!BOOT!"=="1" goto :after_emulator
+if "!BOOT!"=="1" goto :device_ok
 set /a WAIT+=1
-if !WAIT! GEQ 40 goto :after_emulator
+if !WAIT! GEQ 40 goto :device_ok
 timeout /t 3 /nobreak >nul
 goto :wait_boot
 
-:after_emulator
-echo Device ready.
-echo.
-
-adb reverse tcp:8081 tcp:8081 >nul 2>&1
-adb reverse tcp:3001 tcp:3001 >nul 2>&1
-
-echo Starting Metro in a new window...
-start "Ticker Metro" /D "%~dp0" cmd /k "npm start"
-
-set "QUICK=0"
-if "%FORCE_REBUILD%"=="0" (
-  adb shell pm path com.ticker >nul 2>&1
-  if not errorlevel 1 set "QUICK=1"
-)
-
-if "%QUICK%"=="1" (
-  echo.
-  echo App already installed — quick start ^(no Gradle rebuild^).
-  echo For a full native rebuild: run.bat rebuild
-  echo Waiting 5 seconds for Metro...
+:device_ok
+adb devices 2>nul | findstr "offline" >nul
+if not errorlevel 1 (
+  echo   WARNING: emulator shows offline - restarting adb
+  adb kill-server >nul 2>&1
+  adb start-server >nul 2>&1
   timeout /t 5 /nobreak >nul
-  adb shell am start -n com.ticker/.MainActivity >nul 2>&1
-  if errorlevel 1 (
-    echo Launch failed — running full install...
-    goto :full_build
-  )
-  goto :success
 )
+echo   Ready
 
-:full_build
-echo Waiting 10 seconds for Metro...
-timeout /t 10 /nobreak >nul
-
-echo.
-if "%FORCE_REBUILD%"=="1" (
-  echo Full rebuild ^(Gradle — may take 1-3 minutes^)...
+echo [2/4] Metro bundler
+set "METRO_UP=0"
+netstat -an 2>nul | findstr ":8081" | findstr "LISTENING" >nul
+if not errorlevel 1 set "METRO_UP=1"
+if "!METRO_UP!"=="1" (
+  echo   Already running on port 8081
 ) else (
-  echo Building and installing app ^(first install may take 1-2 minutes^)...
-)
-call npx react-native run-android --no-packager --port 8081 --active-arch-only
-if errorlevel 1 (
-  echo.
-  echo ERROR: Build or install failed.
-  echo - Keep the Metro window open
-  echo - If port 8081 is busy, close other Metro windows
-  echo - Corrupted Gradle cache: delete %%USERPROFILE%%\.gradle\caches then run.bat rebuild
-  echo - Or run: run.bat rebuild
-  goto :fail
+  echo   Clearing Metro cache
+  if exist "%TEMP%\metro-cache" rmdir /s /q "%TEMP%\metro-cache" 2>nul
+  for /d %%D in ("%TEMP%\metro-*") do rmdir /s /q "%%D" 2>nul
+  for /d %%D in ("%TEMP%\haste-map-*") do rmdir /s /q "%%D" 2>nul
+  echo   Starting Metro - keep the Ticker Metro window open
+  start "Ticker Metro" /D "%~dp0" cmd /k "npm run start:clean"
+  echo   Waiting 12 seconds for Metro
+  ping 127.0.0.1 -n 13 >nul
 )
 
-:success
+echo [3/4] Connect emulator to Metro
+adb start-server >nul 2>&1
+adb reverse tcp:8081 tcp:8081 2>nul
+
+set "APP_INSTALLED=0"
+adb shell pm path com.ticker >nul 2>&1
+if not errorlevel 1 set "APP_INSTALLED=1"
+
+if "%MODE%"=="dev" if "!APP_INSTALLED!"=="1" goto :launch
+if "%MODE%"=="rebuild" goto :install
+if "%MODE%"=="install" goto :install
+if "!APP_INSTALLED!"=="0" goto :install
+goto :launch
+
+:install
+echo [4/4] Installing app on emulator - first time or rebuild, 1-3 min
+echo   This is NOT an APK - just puts the dev app on the emulator
+call npx react-native run-android --no-packager --port 8081 --active-arch-only
+if errorlevel 1 goto :fail
+goto :done
+
+:launch
+echo [4/4] Opening app - no Gradle build
+timeout /t 2 /nobreak >nul
+adb shell am start -n com.ticker/.MainActivity >nul 2>&1
+if errorlevel 1 (
+  echo   App not found - running first install
+  goto :install
+)
+
+:done
 echo.
 echo ========================================
-echo  SUCCESS - App should be on the emulator
-echo  Keep the "Ticker Metro" window open
-echo  Backend API: cd ..\backend ^&^& npm run dev  (port 3001)
+echo  DEV READY - edit UI in src/ and save
+echo  Changes appear live in the emulator
+echo  Keep Ticker Metro window open
+echo.
+echo  First install slow?  run.bat install
+echo  Native code change?  run.bat rebuild
+echo  Release APK later?   android\gradlew assembleRelease
 echo ========================================
 goto :end
+
+:fail_node
+echo ERROR: Node.js 22 or newer required.
+node -v
+goto :fail
 
 :fail
 echo.
