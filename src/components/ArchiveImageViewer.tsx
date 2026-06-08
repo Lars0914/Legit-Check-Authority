@@ -36,7 +36,22 @@ export function ArchiveImageViewer({
     ? resolveArchiveImageUrl(current.url, "full")
     : "";
   const [frameSize, setFrameSize] = useState({ w: 1, h: 1 });
+  const [bodyHeight, setBodyHeight] = useState(0);
   const zoom = useZoomableImage(frameSize.w, frameSize.h);
+
+  const insightMaxHeight = 93;
+  const bodySpacing = theme.spacing.sm + theme.spacing.xs;
+  const imageFrameHeight =
+    bodyHeight > 0
+      ? Math.max(
+          120,
+          Math.round(
+            (bodyHeight -
+              (current?.description ? insightMaxHeight + bodySpacing : 0)) /
+              2,
+          ),
+        )
+      : undefined;
 
   useEffect(() => {
     zoom.resetZoom();
@@ -90,44 +105,56 @@ export function ArchiveImageViewer({
         </Text>
       </View>
 
-      <View style={styles.viewerFrame} onLayout={handleFrameLayout}>
+      <View
+        style={styles.body}
+        onLayout={(event) => {
+          const { height } = event.nativeEvent.layout;
+          if (height > 0) setBodyHeight(height);
+        }}>
         <View
-          style={styles.viewport}
-          onLayout={zoom.handleViewportLayout}
-          {...zoom.panHandlers}>
+          style={[
+            styles.viewerFrame,
+            imageFrameHeight != null && { height: imageFrameHeight },
+          ]}
+          onLayout={handleFrameLayout}>
           <View
-            style={[
-              styles.stage,
-              { width: zoom.viewport.w, height: zoom.viewport.h },
-            ]}>
+            style={styles.viewport}
+            onLayout={zoom.handleViewportLayout}
+            {...zoom.panHandlers}>
             <View
-              style={{
-                width: zoom.baseW,
-                height: zoom.baseH,
-                transform: [
-                  { translateX: zoom.offset.x },
-                  { translateY: zoom.offset.y },
-                  { scale: zoom.zoomLevel },
-                ],
-              }}>
-              <Image
-                source={{ uri: fullUri }}
-                style={{ width: zoom.baseW, height: zoom.baseH }}
-                resizeMode="contain"
-              />
+              style={[
+                styles.stage,
+                { width: zoom.viewport.w, height: zoom.viewport.h },
+              ]}>
+              <View
+                style={{
+                  width: zoom.baseW,
+                  height: zoom.baseH,
+                  transform: [
+                    { translateX: zoom.offset.x },
+                    { translateY: zoom.offset.y },
+                    { scale: zoom.zoomLevel },
+                  ],
+                }}>
+                <Image
+                  source={{ uri: fullUri }}
+                  style={{ width: zoom.baseW, height: zoom.baseH }}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
           </View>
         </View>
-      </View>
 
-      {current.description ? (
-        <ScrollView
-          style={styles.insightScroll}
-          contentContainerStyle={styles.insightScrollContent}
-          showsVerticalScrollIndicator>
-          <Text style={styles.insightText}>{current.description}</Text>
-        </ScrollView>
-      ) : null}
+        {current.description ? (
+          <ScrollView
+            style={[styles.insightScroll, { maxHeight: insightMaxHeight }]}
+            contentContainerStyle={styles.insightScrollContent}
+            showsVerticalScrollIndicator>
+            <Text style={styles.insightText}>{current.description}</Text>
+          </ScrollView>
+        ) : null}
+      </View>
 
       <View style={styles.toolbar}>
         <Pressable
@@ -223,8 +250,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.text,
   },
+  body: {
+    flex: 1,
+  },
   insightScroll: {
-    maxHeight: 140,
     marginHorizontal: theme.spacing.md,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xs,
@@ -234,18 +263,16 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderBright,
   },
   insightScrollContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   insightText: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 19,
     color: theme.colors.text,
     fontWeight: "500",
   },
   viewerFrame: {
-    flex: 1,
-    minHeight: 200,
     marginHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.md,
     borderWidth: 1,
