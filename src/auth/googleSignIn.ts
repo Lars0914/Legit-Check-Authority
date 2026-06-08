@@ -93,13 +93,22 @@ export async function getGoogleIdToken(): Promise<string> {
     }
 
     let idToken = result.data.idToken;
-    if (!idToken) {
+    try {
       const tokens = await GoogleSignin.getTokens();
-      idToken = tokens.idToken;
+      if (tokens.idToken) {
+        idToken = tokens.idToken;
+      }
+    } catch {
+      /* use signIn token if getTokens fails */
     }
     if (!idToken) {
       throw new Error(
         "No ID token from Google. GOOGLE_WEB_CLIENT_ID must be the Web OAuth client ID from Google Cloud (not the Android client ID).",
+      );
+    }
+    if (idToken.split(".").length !== 3) {
+      throw new Error(
+        "Google returned an invalid ID token. Confirm GOOGLE_WEB_CLIENT_ID is the Web OAuth client ID, then rebuild the app.",
       );
     }
     return idToken;

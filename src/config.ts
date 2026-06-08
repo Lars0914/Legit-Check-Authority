@@ -22,8 +22,15 @@ export const API_BASE_URL = PRODUCTION_API_BASE_URL;
  * OAuth 2.0 **Web application** client ID (Credentials → Web application — NOT Android).
  * Must match backend GOOGLE_CLIENT_ID. Leave empty to hide Google sign-in.
  */
-export const GOOGLE_WEB_CLIENT_ID = "656762894703-m08unsqdgban2pj81mr5g6ljl4bf3141.apps.googleusercontent.com";
+export const GOOGLE_WEB_CLIENT_ID =
+  "656762894703-m08unsqdgban2pj81mr5g6ljl4bf3141.apps.googleusercontent.com";
 
+/**
+ * Optional Android OAuth client ID from Google Cloud (Credentials → Android).
+ * Add the same value to backend GOOGLE_ANDROID_CLIENT_ID on Vercel if Google
+ * sign-in tokens use a different aud/azp than the Web client ID.
+ */
+export const GOOGLE_ANDROID_CLIENT_ID = "";
 
 /**
  * Stripe publishable key (pk_test_… or pk_live_…).
