@@ -104,3 +104,4 @@ If Metro fails with `@d11/react-native-fast-image could not be found`, run **`np
 | `react-native-fast-image could not be found` | Run `npm install` in project root, then rebuild |
 | No emulator | `adb devices` should list a device |
 | Red screen / Metro | `npm start` in one terminal, `npm run android` in another |
+| Google "Invalid sign-in token" | Set Vercel `GOOGLE_CLIENT_ID` to the **Web** OAuth client ID (same as `GOOGLE_WEB_CLIENT_ID` in `src/config.ts`). In Google Cloud → Credentials, create/use **Web application** + **Android** clients for package `com.legitcheckauthority.app`. Redeploy backend. |

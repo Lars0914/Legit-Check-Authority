@@ -9,7 +9,7 @@ const fastImagePackageDir = path.join(
   '@d11',
   'react-native-fast-image',
 );
-const fastImageStub = path.join(projectRoot, 'src/lib/fastImageStub.ts');
+const fastImageStub = path.join(projectRoot, 'src/lib/fastImageStub.tsx');
 
 /**
  * Metro configuration

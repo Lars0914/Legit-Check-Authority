@@ -1,10 +1,19 @@
 import React from "react";
-import { Image, type ImageProps } from "react-native";
+import {
+  Image,
+  type ImageProps,
+  type ImageStyle,
+  type StyleProp,
+} from "react-native";
 
 type FastImageSource = { uri: string; priority?: string };
 
-interface FastImageProps extends Omit<ImageProps, "source"> {
+interface FastImageStubProps
+  extends Omit<ImageProps, "source" | "onLoad" | "onError"> {
   source: FastImageSource;
+  /** Matches @d11/react-native-fast-image — not RN Image's onLoad. */
+  onLoad?: () => void;
+  onError?: () => void;
 }
 
 const priority = {
@@ -24,11 +33,13 @@ function FastImageStub({
   source,
   onLoad,
   onError,
+  style,
   ...rest
-}: FastImageProps) {
+}: FastImageStubProps) {
   return (
     <Image
       {...rest}
+      style={style as StyleProp<ImageStyle>}
       source={{ uri: source.uri }}
       onLoadEnd={onLoad}
       onError={onError}

@@ -62,6 +62,7 @@ export function configureGoogleSignIn(): void {
   mod.GoogleSignin.configure({
     webClientId,
     offlineAccess: false,
+    scopes: ["email", "profile"],
   });
   configured = true;
 }
@@ -90,9 +91,16 @@ export async function getGoogleIdToken(): Promise<string> {
     if (result.type === "cancelled") {
       throw new Error("Sign in cancelled");
     }
-    const idToken = result.data.idToken;
+
+    let idToken = result.data.idToken;
     if (!idToken) {
-      throw new Error("No ID token from Google. Check GOOGLE_WEB_CLIENT_ID.");
+      const tokens = await GoogleSignin.getTokens();
+      idToken = tokens.idToken;
+    }
+    if (!idToken) {
+      throw new Error(
+        "No ID token from Google. GOOGLE_WEB_CLIENT_ID must be the Web OAuth client ID from Google Cloud (not the Android client ID).",
+      );
     }
     return idToken;
   } catch (err) {
