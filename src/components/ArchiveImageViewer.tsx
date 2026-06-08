@@ -4,6 +4,7 @@ import {
   Image,
   LayoutChangeEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -120,9 +121,12 @@ export function ArchiveImageViewer({
       </View>
 
       {current.description ? (
-        <View style={styles.insightPanel}>
+        <ScrollView
+          style={styles.insightScroll}
+          contentContainerStyle={styles.insightScrollContent}
+          showsVerticalScrollIndicator>
           <Text style={styles.insightText}>{current.description}</Text>
-        </View>
+        </ScrollView>
       ) : null}
 
       <View style={styles.toolbar}>
@@ -151,9 +155,7 @@ export function ArchiveImageViewer({
           <Text style={styles.zoomLabel}>
             {Math.round(zoom.zoomLevel * 100)}%
           </Text>
-        ) : (
-          <Text style={styles.zoomHint}>Pinch · Double-tap</Text>
-        )}
+        ) : null}
 
         <Pressable
           style={({ pressed }) => [
@@ -221,16 +223,19 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.text,
   },
-  insightPanel: {
+  insightScroll: {
+    maxHeight: 140,
     marginHorizontal: theme.spacing.md,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xs,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderBright,
+  },
+  insightScrollContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   insightText: {
     fontSize: 14,
@@ -240,6 +245,7 @@ const styles = StyleSheet.create({
   },
   viewerFrame: {
     flex: 1,
+    minHeight: 200,
     marginHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.md,
     borderWidth: 1,
@@ -310,12 +316,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: theme.colors.accentCyan,
-  },
-  zoomHint: {
-    minWidth: 120,
-    textAlign: "center",
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.textMuted,
   },
 });

@@ -66,6 +66,7 @@ export function ArchiveImage({ image, priority = false }: Props) {
       <ImageLightbox
         uri={fullUri}
         visible={lightboxOpen}
+        description={image.description}
         onClose={() => setLightboxOpen(false)}
       />
     </View>

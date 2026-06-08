@@ -17,6 +17,7 @@ interface Props {
   visible: boolean;
   label?: string;
   cropHint?: string | null;
+  description?: string | null;
   onClose: () => void;
 }
 
@@ -29,6 +30,7 @@ export function ImageLightbox({
   visible,
   label,
   cropHint,
+  description,
   onClose,
 }: Props) {
   const zoom = useZoomableImage(BASE_IMAGE_W, BASE_IMAGE_H);
@@ -93,9 +95,9 @@ export function ImageLightbox({
         </View>
 
         <View style={styles.controls}>
-          <Text style={styles.hintText}>
-            Pinch to zoom · Double-tap to zoom in or out · Drag when zoomed
-          </Text>
+          {description ? (
+            <Text style={styles.description}>{description}</Text>
+          ) : null}
           {zoom.zoomLevel > zoom.minZoom + 0.05 ? (
             <Text style={styles.zoomLevel}>
               {Math.round(zoom.zoomLevel * 100)}%
@@ -162,11 +164,14 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 36 : 24,
     alignItems: "center",
     gap: 8,
+    maxHeight: 200,
   },
-  hintText: {
-    fontSize: 12,
-    color: "rgba(248, 250, 252, 0.55)",
+  description: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: "rgba(248, 250, 252, 0.9)",
     textAlign: "center",
+    marginBottom: 4,
   },
   zoomLevel: {
     color: "#F8FAFC",
