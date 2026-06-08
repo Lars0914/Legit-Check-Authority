@@ -166,7 +166,8 @@ export function GuideScreen({ slug, onBack, onOpenSubscription }: Props) {
           </Text>
           <Text style={styles.assistantBody}>
             Work through each checkpoint below. Compare genuine and counterfeit
-            details side by side — tap any photo to zoom in on fine differences.
+            photos with the insight between them — pinch or double-tap any photo
+            to zoom in on fine differences.
           </Text>
           {inspectionSections.length > 0 ? (
             <View style={styles.progressWrap}>

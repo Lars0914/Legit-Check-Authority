@@ -138,31 +138,16 @@ export function ArchiveImageViewer({
           </Text>
         </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.toolbarBtn,
-            zoom.zoomLevel <= zoom.minZoom && styles.toolbarBtnDisabled,
-            pressed && styles.toolbarBtnPressed,
-          ]}
-          onPress={() => zoom.adjustZoom(-zoom.zoomStep)}
-          disabled={zoom.zoomLevel <= zoom.minZoom}>
-          <Text style={styles.toolbarBtnSymbol}>−</Text>
-        </Pressable>
-
         <Text style={styles.toolbarCounter}>
           {index + 1} / {images.length}
         </Text>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.toolbarBtn,
-            zoom.zoomLevel >= zoom.maxZoom && styles.toolbarBtnDisabled,
-            pressed && styles.toolbarBtnPressed,
-          ]}
-          onPress={() => zoom.adjustZoom(zoom.zoomStep)}
-          disabled={zoom.zoomLevel >= zoom.maxZoom}>
-          <Text style={styles.toolbarBtnSymbol}>+</Text>
-        </Pressable>
+        {zoom.zoomLevel > zoom.minZoom + 0.05 ? (
+          <Text style={styles.zoomLabel}>
+            {Math.round(zoom.zoomLevel * 100)}%
+          </Text>
+        ) : (
+          <Text style={styles.zoomHint}>Pinch · Double-tap</Text>
+        )}
 
         <Pressable
           style={({ pressed }) => [
@@ -295,5 +280,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: theme.colors.text,
+  },
+  zoomLabel: {
+    minWidth: 72,
+    textAlign: "center",
+    fontSize: 13,
+    fontWeight: "700",
+    color: theme.colors.accentCyan,
+  },
+  zoomHint: {
+    minWidth: 120,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.textMuted,
   },
 });

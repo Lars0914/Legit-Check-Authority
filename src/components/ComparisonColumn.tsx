@@ -10,6 +10,8 @@ interface Props {
   photo: PhotoRef | null;
   fullWidth?: boolean;
   paired?: boolean;
+  /** Hide body text when a shared comparison insight is shown elsewhere. */
+  hideBodyText?: boolean;
 }
 
 const variants = {
@@ -33,6 +35,7 @@ export function ComparisonColumn({
   photo,
   fullWidth = false,
   paired = false,
+  hideBodyText = false,
 }: Props) {
   const v = variants[variant];
 
@@ -52,7 +55,9 @@ export function ComparisonColumn({
         <View style={[styles.labelDot, { backgroundColor: v.accent }]} />
         <Text style={[styles.labelText, { color: v.accent }]}>{v.title}</Text>
       </View>
-      {text?.text ? <Text style={styles.body}>{text.text}</Text> : null}
+      {text?.text && !hideBodyText ? (
+        <Text style={styles.body}>{text.text}</Text>
+      ) : null}
       {photo ? (
         <View style={styles.photoSlot}>
           <GuideImage

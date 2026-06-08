@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 import { theme } from "../theme";
 import type { GuideSection, PhotoRef, SectionText } from "../types/api";
 import { ComparisonColumn } from "./ComparisonColumn";
+import { ComparisonInsight } from "./ComparisonInsight";
 import { GuideImage } from "./GuideImage";
 
 interface Props {
@@ -20,11 +21,26 @@ function columnHasContent(
   return Boolean(text?.text || photo);
 }
 
+function resolveComparisonInsight(section: GuideSection): string | null {
+  if (section.comparisonInsight?.trim()) {
+    return section.comparisonInsight.trim();
+  }
+
+  const parts = [section.genuine?.text, section.counterfeit?.text].filter(
+    Boolean,
+  ) as string[];
+  if (parts.length === 0) return null;
+
+  const combined = parts.join(" ");
+  return combined.length > 320 ? `${combined.slice(0, 317)}…` : combined;
+}
+
 function previewText(section: GuideSection): string | null {
   const source =
-    section.genuine?.text ??
-    section.counterfeit?.text ??
-    section.content ??
+    section.comparisonInsight?.trim() ||
+    section.genuine?.text ||
+    section.counterfeit?.text ||
+    section.content ||
     null;
   if (!source) return null;
   const line = source.split("\n").find((l) => l.trim().length > 0);
@@ -53,8 +69,38 @@ export function SectionCard({
   const showComparison = hasGenuine || hasCounterfeit;
   const singleColumn = showComparison && hasGenuine !== hasCounterfeit;
   const twoColumns = hasGenuine && hasCounterfeit;
+  const hasGenuinePhoto = Boolean(section.photos.genuine?.found);
+  const hasCounterfeitPhoto = Boolean(section.photos.counterfeit?.found);
+  const comparisonInsight = resolveComparisonInsight(section);
+  const showInsightBetween =
+    twoColumns &&
+    hasGenuinePhoto &&
+    hasCounterfeitPhoto &&
+    Boolean(comparisonInsight);
   const preview = previewText(section);
   const collapsible = typeof onToggle === "function";
+
+  const renderGenuineColumn = (paired: boolean, fullWidth: boolean) => (
+    <ComparisonColumn
+      variant="genuine"
+      text={section.genuine}
+      photo={section.photos.genuine}
+      fullWidth={fullWidth}
+      paired={paired}
+      hideBodyText={showInsightBetween}
+    />
+  );
+
+  const renderCounterfeitColumn = (paired: boolean, fullWidth: boolean) => (
+    <ComparisonColumn
+      variant="counterfeit"
+      text={section.counterfeit}
+      photo={section.photos.counterfeit}
+      fullWidth={fullWidth}
+      paired={paired}
+      hideBodyText={showInsightBetween}
+    />
+  );
 
   return (
     <View style={[styles.card, expanded && styles.cardExpanded]}>
@@ -101,35 +147,42 @@ export function SectionCard({
           ) : null}
 
           {showComparison ? (
-            <View
-              style={[
-                styles.row,
-                twoColumns && styles.rowPaired,
-                singleColumn && styles.rowSingle,
-                twoColumns && !sideBySide && styles.rowStacked,
-              ]}>
-              {hasGenuine ? (
-                <ComparisonColumn
-                  variant="genuine"
-                  text={section.genuine}
-                  photo={section.photos.genuine}
-                  fullWidth={singleColumn}
-                  paired={twoColumns}
-                />
-              ) : null}
-              {twoColumns ? (
-                <View style={sideBySide ? styles.gap : styles.gapStacked} />
-              ) : null}
-              {hasCounterfeit ? (
-                <ComparisonColumn
-                  variant="counterfeit"
-                  text={section.counterfeit}
-                  photo={section.photos.counterfeit}
-                  fullWidth={singleColumn}
-                  paired={twoColumns}
-                />
-              ) : null}
-            </View>
+            showInsightBetween ? (
+              <View
+                style={[
+                  styles.row,
+                  styles.rowPaired,
+                  !sideBySide && styles.rowStacked,
+                ]}>
+                {renderGenuineColumn(sideBySide, false)}
+                {sideBySide ? (
+                  <>
+                    <View style={styles.gap} />
+                    <ComparisonInsight text={comparisonInsight!} inline />
+                    <View style={styles.gap} />
+                  </>
+                ) : (
+                  <ComparisonInsight text={comparisonInsight!} />
+                )}
+                {renderCounterfeitColumn(sideBySide, false)}
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.row,
+                  twoColumns && styles.rowPaired,
+                  singleColumn && styles.rowSingle,
+                  twoColumns && !sideBySide && styles.rowStacked,
+                ]}>
+                {hasGenuine ? renderGenuineColumn(twoColumns, singleColumn) : null}
+                {twoColumns ? (
+                  <View style={sideBySide ? styles.gap : styles.gapStacked} />
+                ) : null}
+                {hasCounterfeit
+                  ? renderCounterfeitColumn(twoColumns, singleColumn)
+                  : null}
+              </View>
+            )
           ) : null}
 
           {section.photos.reference ? (

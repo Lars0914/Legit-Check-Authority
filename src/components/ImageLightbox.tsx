@@ -1,16 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   Dimensions,
   Image,
-  LayoutChangeEvent,
   Modal,
-  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useZoomableImage } from "../hooks/useZoomableImage";
 import { theme } from "../theme";
 
 interface Props {
@@ -21,50 +20,9 @@ interface Props {
   onClose: () => void;
 }
 
-interface Offset {
-  x: number;
-  y: number;
-}
-
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const BASE_IMAGE_W = SCREEN_W;
 const BASE_IMAGE_H = SCREEN_H * 0.62;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.5;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function panBounds(
-  scale: number,
-  viewportW: number,
-  viewportH: number,
-): { minX: number; maxX: number; minY: number; maxY: number } {
-  const extraX = (BASE_IMAGE_W * scale - viewportW) / 2;
-  const extraY = (BASE_IMAGE_H * scale - viewportH) / 2;
-
-  return {
-    minX: extraX > 0 ? -extraX : 0,
-    maxX: extraX > 0 ? extraX : 0,
-    minY: extraY > 0 ? -extraY : 0,
-    maxY: extraY > 0 ? extraY : 0,
-  };
-}
-
-function clampOffset(
-  next: Offset,
-  scale: number,
-  viewportW: number,
-  viewportH: number,
-): Offset {
-  const bounds = panBounds(scale, viewportW, viewportH);
-  return {
-    x: clamp(next.x, bounds.minX, bounds.maxX),
-    y: clamp(next.y, bounds.minY, bounds.maxY),
-  };
-}
 
 export function ImageLightbox({
   uri,
@@ -73,100 +31,18 @@ export function ImageLightbox({
   cropHint,
   onClose,
 }: Props) {
-  const [zoomLevel, setZoomLevel] = useState(MIN_ZOOM);
-  const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
-  const [viewport, setViewport] = useState({ w: SCREEN_W, h: SCREEN_H * 0.55 });
-
-  const zoomRef = useRef(zoomLevel);
-  const offsetRef = useRef(offset);
-  const panStartRef = useRef<Offset>({ x: 0, y: 0 });
-  const viewportRef = useRef(viewport);
-
-  zoomRef.current = zoomLevel;
-  offsetRef.current = offset;
-  viewportRef.current = viewport;
-
-  const resetZoom = useCallback(() => {
-    setZoomLevel(MIN_ZOOM);
-    setOffset({ x: 0, y: 0 });
-  }, []);
+  const zoom = useZoomableImage(BASE_IMAGE_W, BASE_IMAGE_H);
 
   const handleClose = useCallback(() => {
-    resetZoom();
+    zoom.resetZoom();
     onClose();
-  }, [onClose, resetZoom]);
-
-  const applyZoom = useCallback((next: number) => {
-    const currentZoom = zoomRef.current;
-    const newZoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
-    if (newZoom === currentZoom) return;
-
-    const ratio = newZoom / currentZoom;
-    const { w, h } = viewportRef.current;
-    const currentOffset = offsetRef.current;
-
-    setZoomLevel(newZoom);
-    setOffset(
-      clampOffset(
-        {
-          x: currentOffset.x * ratio,
-          y: currentOffset.y * ratio,
-        },
-        newZoom,
-        w,
-        h,
-      ),
-    );
-  }, []);
-
-  const adjustZoom = useCallback(
-    (delta: number) => {
-      applyZoom(zoomRef.current + delta);
-    },
-    [applyZoom],
-  );
-
-  const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    if (width > 0 && height > 0) {
-      setViewport({ w: width, h: height });
-      setOffset((prev) =>
-        clampOffset(prev, zoomRef.current, width, height),
-      );
-    }
-  }, []);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => zoomRef.current > MIN_ZOOM,
-        onMoveShouldSetPanResponder: () => zoomRef.current > MIN_ZOOM,
-        onPanResponderGrant: () => {
-          panStartRef.current = { ...offsetRef.current };
-        },
-        onPanResponderMove: (_, gesture) => {
-          const { w, h } = viewportRef.current;
-          setOffset(
-            clampOffset(
-              {
-                x: panStartRef.current.x + gesture.dx,
-                y: panStartRef.current.y + gesture.dy,
-              },
-              zoomRef.current,
-              w,
-              h,
-            ),
-          );
-        },
-      }),
-    [],
-  );
+  }, [onClose, zoom.resetZoom]);
 
   useEffect(() => {
     if (!visible) {
-      resetZoom();
+      zoom.resetZoom();
     }
-  }, [visible, resetZoom]);
+  }, [visible, zoom.resetZoom]);
 
   if (!visible) return null;
 
@@ -181,9 +57,7 @@ export function ImageLightbox({
         <View style={styles.topBar}>
           <View style={styles.labelWrap}>
             {label ? <Text style={styles.label}>{label}</Text> : null}
-            {cropHint ? (
-              <Text style={styles.hint}>{cropHint}</Text>
-            ) : null}
+            {cropHint ? <Text style={styles.hint}>{cropHint}</Text> : null}
           </View>
           <Pressable onPress={handleClose} hitSlop={12} style={styles.closeBtn}>
             <Text style={styles.closeText}>✕</Text>
@@ -192,21 +66,21 @@ export function ImageLightbox({
 
         <View
           style={styles.viewport}
-          onLayout={handleViewportLayout}
-          {...panResponder.panHandlers}>
+          onLayout={zoom.handleViewportLayout}
+          {...zoom.panHandlers}>
           <View
             style={[
               styles.stage,
-              { width: viewport.w, height: viewport.h },
+              { width: zoom.viewport.w, height: zoom.viewport.h },
             ]}>
             <View
               style={{
-                width: BASE_IMAGE_W,
-                height: BASE_IMAGE_H,
+                width: zoom.baseW,
+                height: zoom.baseH,
                 transform: [
-                  { translateX: offset.x },
-                  { translateY: offset.y },
-                  { scale: zoomLevel },
+                  { translateX: zoom.offset.x },
+                  { translateY: zoom.offset.y },
+                  { scale: zoom.zoomLevel },
                 ],
               }}>
               <Image
@@ -220,23 +94,13 @@ export function ImageLightbox({
 
         <View style={styles.controls}>
           <Text style={styles.hintText}>
-            Use +/- to zoom · Drag to view corners · Tap ✕ to close
+            Pinch to zoom · Double-tap to zoom in or out · Drag when zoomed
           </Text>
-          <View style={styles.zoomRow}>
-            <Pressable
-              style={styles.zoomBtn}
-              onPress={() => adjustZoom(-ZOOM_STEP)}
-              disabled={zoomLevel <= MIN_ZOOM}>
-              <Text style={styles.zoomBtnText}>−</Text>
-            </Pressable>
-            <Text style={styles.zoomLevel}>{Math.round(zoomLevel * 100)}%</Text>
-            <Pressable
-              style={styles.zoomBtn}
-              onPress={() => adjustZoom(ZOOM_STEP)}
-              disabled={zoomLevel >= MAX_ZOOM}>
-              <Text style={styles.zoomBtnText}>+</Text>
-            </Pressable>
-          </View>
+          {zoom.zoomLevel > zoom.minZoom + 0.05 ? (
+            <Text style={styles.zoomLevel}>
+              {Math.round(zoom.zoomLevel * 100)}%
+            </Text>
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -297,37 +161,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 36 : 24,
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   hintText: {
     fontSize: 12,
     color: "rgba(248, 250, 252, 0.55)",
     textAlign: "center",
   },
-  zoomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  zoomBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  zoomBtnText: {
-    color: "#F8FAFC",
-    fontSize: 22,
-    fontWeight: "600",
-    lineHeight: 24,
-  },
   zoomLevel: {
     color: "#F8FAFC",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    minWidth: 48,
-    textAlign: "center",
   },
 });

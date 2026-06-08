@@ -80,6 +80,7 @@ export interface GuideSection {
   genuine: SectionText | null;
   counterfeit: SectionText | null;
   content: string | null;
+  comparisonInsight: string | null;
   photos: {
     genuine: PhotoRef | null;
     counterfeit: PhotoRef | null;
