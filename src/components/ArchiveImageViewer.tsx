@@ -145,18 +145,19 @@ export function ArchiveImageViewer({
         <Pressable
           style={({ pressed }) => [
             styles.toolbarBtn,
-            styles.toolbarBtnWide,
             !canGoPrevious && styles.toolbarBtnDisabled,
             pressed && canGoPrevious && styles.toolbarBtnPressed,
           ]}
           onPress={goPrevious}
-          disabled={!canGoPrevious}>
+          disabled={!canGoPrevious}
+          accessibilityLabel="Previous image"
+          accessibilityRole="button">
           <Text
             style={[
-              styles.toolbarBtnText,
+              styles.toolbarBtnSymbol,
               !canGoPrevious && styles.toolbarBtnTextDisabled,
             ]}>
-            Previous
+            {"<"}
           </Text>
         </Pressable>
 
@@ -172,18 +173,19 @@ export function ArchiveImageViewer({
         <Pressable
           style={({ pressed }) => [
             styles.toolbarBtn,
-            styles.toolbarBtnWide,
             !canGoNext && styles.toolbarBtnDisabled,
             pressed && canGoNext && styles.toolbarBtnPressed,
           ]}
           onPress={goNext}
-          disabled={!canGoNext}>
+          disabled={!canGoNext}
+          accessibilityLabel="Next image"
+          accessibilityRole="button">
           <Text
             style={[
-              styles.toolbarBtnText,
+              styles.toolbarBtnSymbol,
               !canGoNext && styles.toolbarBtnTextDisabled,
             ]}>
-            Next
+            {">"}
           </Text>
         </Pressable>
       </View>
@@ -276,35 +278,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 12,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
   toolbarBtn: {
-    minWidth: 36,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.bg,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 0,
-  },
-  toolbarBtnWide: {
-    minWidth: 72,
-    paddingHorizontal: 8,
+    marginTop: 6,
+    marginBottom: 6,
   },
   toolbarBtnPressed: { opacity: 0.85 },
   toolbarBtnDisabled: { opacity: 0.4 },
-  toolbarBtnText: {
-    fontSize: 11,
+  toolbarBtnSymbol: {
+    fontSize: 16,
     fontWeight: "700",
     color: theme.colors.text,
+    lineHeight: 18,
   },
   toolbarBtnTextDisabled: {
     color: theme.colors.textMuted,
