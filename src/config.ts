@@ -24,6 +24,7 @@ export const API_BASE_URL = PRODUCTION_API_BASE_URL;
  */
 export const GOOGLE_WEB_CLIENT_ID = "656762894703-m08unsqdgban2pj81mr5g6ljl4bf3141.apps.googleusercontent.com";
 
+
 /**
  * Stripe publishable key (pk_test_… or pk_live_…).
  * Must match backend STRIPE_PUBLISHABLE_KEY. Leave empty to disable payments UI.

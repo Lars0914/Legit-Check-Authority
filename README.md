@@ -1,6 +1,6 @@
 # Ticker (React Native CLI)
 
-**App identity:** display name **Ticker**, Android package / iOS bundle ID **`com.ticker`**, React Native module name **`Ticker`** (`app.json`).
+**App identity:** display name **Legit Check Authority**, Android package / iOS bundle ID **`com.legitcheckauthority.app`**, React Native module name **`Ticker`** (`app.json`).
 
 After changing package ID, uninstall any previous **TickerMobile** build from the device/emulator, then run a clean native build (`cd android && ./gradlew clean` on Android).
 
@@ -23,7 +23,7 @@ Double-click **`run.bat`** (one script; window stays open so you can read errors
 
 | Command | What it does | Typical time |
 |---------|----------------|--------------|
-| `run.bat` | Emulator if needed → Metro → **quick launch** if `com.ticker` is already installed | ~20–30 s |
+| `run.bat` | Emulator if needed → Metro → **quick launch** if `com.legitcheckauthority.app` is already installed | ~20–30 s |
 | `run.bat rebuild` | Same, but always runs Gradle + native build (needed after package/native changes) | 1–3 min |
 
 Optional helpers: `run-metro.bat`, `run-android.bat`, `run-emulator.bat`.

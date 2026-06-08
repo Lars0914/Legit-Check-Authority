@@ -94,7 +94,7 @@ adb start-server >nul 2>&1
 adb reverse tcp:8081 tcp:8081 2>nul
 
 set "APP_INSTALLED=0"
-adb shell pm path com.ticker >nul 2>&1
+adb shell pm path com.legitcheckauthority.app >nul 2>&1
 if not errorlevel 1 set "APP_INSTALLED=1"
 
 if "%MODE%"=="dev" if "!APP_INSTALLED!"=="1" goto :launch
@@ -104,6 +104,11 @@ if "!APP_INSTALLED!"=="0" goto :install
 goto :launch
 
 :install
+if "%MODE%"=="rebuild" (
+  echo   Clearing stale autolinking cache and old package if present...
+  rmdir /s /q android\build\generated\autolinking 2>nul
+  adb uninstall com.ticker 2>nul
+)
 echo [4/4] Installing app on emulator - first time or rebuild, 1-3 min
 echo   This is NOT an APK - just puts the dev app on the emulator
 call npx react-native run-android --no-packager --port 8081 --active-arch-only
@@ -113,7 +118,7 @@ goto :done
 :launch
 echo [4/4] Opening app - no Gradle build
 timeout /t 2 /nobreak >nul
-adb shell am start -n com.ticker/.MainActivity >nul 2>&1
+adb shell am start -n com.legitcheckauthority.app/.MainActivity >nul 2>&1
 if errorlevel 1 (
   echo   App not found - running first install
   goto :install

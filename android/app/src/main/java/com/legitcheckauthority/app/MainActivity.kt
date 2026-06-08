@@ -1,4 +1,4 @@
-package com.ticker
+package com.legitcheckauthority.app
 
 import android.os.Bundle
 import android.view.WindowManager

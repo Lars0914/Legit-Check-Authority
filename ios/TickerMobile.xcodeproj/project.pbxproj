@@ -271,7 +271,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ticker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.legitcheckauthority.app;
 				PRODUCT_NAME = "Legit Check Authority";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -300,7 +300,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ticker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.legitcheckauthority.app;
 				PRODUCT_NAME = "Legit Check Authority";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;

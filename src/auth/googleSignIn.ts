@@ -104,6 +104,12 @@ export async function getGoogleIdToken(): Promise<string> {
         throw new Error("Google Play Services not available");
       }
     }
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("DEVELOPER_ERROR") || (isErrorWithCode(err) && err.code === "10")) {
+      throw new Error(
+        "Google Sign-In config mismatch. Reinstall the app (run.bat rebuild), then confirm Google Cloud has an Android OAuth client for package com.legitcheckauthority.app with SHA-1 5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25.",
+      );
+    }
     throw err instanceof Error ? err : new Error("Google sign-in failed");
   }
 }
