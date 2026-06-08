@@ -15,8 +15,8 @@ import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
 
-const IMAGE_HEIGHT_RATIO = 0.8;
-const INSIGHT_HEIGHT_RATIO = 0.15;
+const IMAGE_HEIGHT_RATIO = 0.7;
+const INSIGHT_HEIGHT_RATIO = 0.25;
 const TOOLBAR_HEIGHT_RATIO = 0.05;
 
 interface Props {
@@ -276,31 +276,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: theme.spacing.md,
+    gap: 6,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
   toolbarBtn: {
-    minWidth: 40,
-    height: 36,
-    borderRadius: theme.radius.sm,
+    minWidth: 36,
+    height: 28,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.bg,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 0,
   },
   toolbarBtnWide: {
-    minWidth: 88,
-    paddingHorizontal: 12,
+    minWidth: 72,
+    paddingHorizontal: 8,
   },
   toolbarBtnPressed: { opacity: 0.85 },
   toolbarBtnDisabled: { opacity: 0.4 },
   toolbarBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     color: theme.colors.text,
   },
@@ -308,9 +310,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
   toolbarCounter: {
-    minWidth: 64,
+    minWidth: 52,
     textAlign: "center",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: theme.colors.text,
   },
