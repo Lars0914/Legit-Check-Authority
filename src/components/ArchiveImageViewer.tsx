@@ -119,6 +119,12 @@ export function ArchiveImageViewer({
         </View>
       </View>
 
+      {current.description ? (
+        <View style={styles.insightPanel}>
+          <Text style={styles.insightText}>{current.description}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.toolbar}>
         <Pressable
           style={({ pressed }) => [
@@ -214,6 +220,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: theme.colors.text,
+  },
+  insightPanel: {
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderBright,
+  },
+  insightText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: theme.colors.text,
+    fontWeight: "500",
   },
   viewerFrame: {
     flex: 1,

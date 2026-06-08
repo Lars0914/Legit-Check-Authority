@@ -72,11 +72,7 @@ export function SectionCard({
   const hasGenuinePhoto = Boolean(section.photos.genuine?.found);
   const hasCounterfeitPhoto = Boolean(section.photos.counterfeit?.found);
   const comparisonInsight = resolveComparisonInsight(section);
-  const showInsightBetween =
-    twoColumns &&
-    hasGenuinePhoto &&
-    hasCounterfeitPhoto &&
-    Boolean(comparisonInsight);
+  const showInsightBetween = Boolean(comparisonInsight) && showComparison;
   const preview = previewText(section);
   const collapsible = typeof onToggle === "function";
 

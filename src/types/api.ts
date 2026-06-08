@@ -134,6 +134,7 @@ export interface ArchiveImage {
   fileName: string;
   storagePath: string;
   url: string;
+  description: string | null;
 }
 
 export interface ArchiveModelResponse {

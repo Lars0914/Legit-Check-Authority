@@ -231,11 +231,12 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
           />
         ) : null}
         {images.map((image, index) => (
-          <ArchiveImage
-            key={image.storagePath}
-            image={image}
-            priority={index < 3}
-          />
+          <View key={image.storagePath}>
+            <ArchiveImage image={image} priority={index < 3} />
+            {image.description ? (
+              <Text style={styles.imageInsight}>{image.description}</Text>
+            ) : null}
+          </View>
         ))}
         {!loadingModel && images.length === 0 ? (
           <Text style={styles.emptyImages}>No images found for this model.</Text>
@@ -893,6 +894,20 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 13,
     paddingVertical: 12,
+  },
+  imageInsight: {
+    marginTop: 10,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderBright,
+    fontSize: 14,
+    lineHeight: 21,
+    color: theme.colors.text,
+    fontWeight: "500",
   },
   chevronCircle: {
     width: 30,
