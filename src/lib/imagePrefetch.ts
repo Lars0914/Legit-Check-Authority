@@ -1,5 +1,6 @@
 import { Image } from "react-native";
 import { isFastImageNativeAvailable } from "./fastImageNative";
+import FastImage from "./fastImageModule";
 import { resolveArchiveImageUrl } from "./imageUrl";
 
 type PrefetchPriority = "low" | "normal" | "high";
@@ -10,7 +11,6 @@ function preloadWithFastImage(
   uris: string[],
   priority: PrefetchPriority,
 ): void {
-  const FastImage = require("@d11/react-native-fast-image").default;
   const priorityValue =
     priority === "high"
       ? FastImage.priority.high

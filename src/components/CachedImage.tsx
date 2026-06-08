@@ -6,6 +6,7 @@ import {
   type StyleProp,
 } from "react-native";
 import { isFastImageNativeAvailable } from "../lib/fastImageNative";
+import FastImage from "../lib/fastImageModule";
 
 type ResizeMode = "contain" | "cover" | "stretch" | "center";
 type ImagePriority = "low" | "normal" | "high";
@@ -34,7 +35,6 @@ function FastImageImpl({
   onLoadEnd,
   onError,
 }: Props) {
-  const FastImage = require("@d11/react-native-fast-image").default;
   return (
     <FastImage
       source={{ uri, priority: FastImage.priority[priority] }}

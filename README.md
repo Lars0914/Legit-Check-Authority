@@ -81,11 +81,26 @@ Edit `src/config.ts` if needed:
 - **Search** — query guides (brand, model, filename)
 - **Guide** — sections with genuine vs counterfeit text and aligned images
 
+## Release APK (Android)
+
+From the project root (not `android/`):
+
+```bash
+npm install
+cd android
+gradlew assembleRelease
+```
+
+APK output: `android/app/build/outputs/apk/release/app-release.apk`
+
+If Metro fails with `@d11/react-native-fast-image could not be found`, run **`npm install`** in the project root first. That package is required for disk-cached archive images; after installing, run a native rebuild (`run.bat rebuild` or `gradlew assembleRelease` again).
+
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
 | “Cannot reach API” | Start backend; confirm `curl http://localhost:3001/health` |
 | Build fails | Set `ANDROID_HOME`, run `cd android && ./gradlew clean` |
+| `react-native-fast-image could not be found` | Run `npm install` in project root, then rebuild |
 | No emulator | `adb devices` should list a device |
 | Red screen / Metro | `npm start` in one terminal, `npm run android` in another |
