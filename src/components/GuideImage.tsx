@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { CachedImage } from "./CachedImage";
 import { ImageLightbox } from "./ImageLightbox";
 import { resolveGuideImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
@@ -72,15 +72,16 @@ export function GuideImage({
           {error ? (
             <Text style={styles.missingText}>Failed to load image</Text>
           ) : (
-            <Image
+            <CachedImage
               key={imageUri}
-              source={{ uri: imageUri, cache: "reload" }}
+              uri={imageUri}
               style={[
                 styles.image,
                 paired && !fullWidth && styles.imagePaired,
                 fullWidth && styles.imageFullWidth,
               ]}
               resizeMode="contain"
+              priority="normal"
               onLoadEnd={() => setLoading(false)}
               onError={() => {
                 if (!retrying) {

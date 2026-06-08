@@ -7,7 +7,7 @@ export const APP_DISPLAY_NAME = "Legit Check Authority";
  * MVP feature flags — set to true when enabling accounts / billing in a future release.
  * Auth and payment screens remain in the codebase but are not shown or called when false.
  */
-export const AUTH_ENABLED = false;
+export const AUTH_ENABLED = true;
 export const PAYMENTS_ENABLED = false;
 
 /** When true: npm install @stripe/stripe-react-native@^0.58.0 and wire src/payments/useStripe.ts */
@@ -22,7 +22,7 @@ export const API_BASE_URL = PRODUCTION_API_BASE_URL;
  * OAuth 2.0 **Web application** client ID (Credentials → Web application — NOT Android).
  * Must match backend GOOGLE_CLIENT_ID. Leave empty to hide Google sign-in.
  */
-export const GOOGLE_WEB_CLIENT_ID = "721266614505-23f6pri2qlfac8i20vd8qkjg208n6bvg.apps.googleusercontent.com";
+export const GOOGLE_WEB_CLIENT_ID = "656762894703-m08unsqdgban2pj81mr5g6ljl4bf3141.apps.googleusercontent.com";
 
 /**
  * Stripe publishable key (pk_test_… or pk_live_…).

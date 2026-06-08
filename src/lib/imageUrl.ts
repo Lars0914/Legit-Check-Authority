@@ -1,4 +1,3 @@
-import { Image } from "react-native";
 import { API_BASE_URL } from "../config";
 
 /** Max width for /media — server resizes large guide photos for reliable mobile decode. */
@@ -34,10 +33,4 @@ export function resolveArchiveImageUrl(
 ): string {
   const maxWidth = size === "full" ? ARCHIVE_FULL_WIDTH : ARCHIVE_THUMB_WIDTH;
   return resolveMediaUrl(url, maxWidth);
-}
-
-export function prefetchArchiveImages(urls: string[]): void {
-  for (const url of urls) {
-    Image.prefetch(resolveArchiveImageUrl(url, "thumb")).catch(() => undefined);
-  }
 }

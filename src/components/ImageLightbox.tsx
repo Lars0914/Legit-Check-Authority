@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -11,8 +11,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { CachedImage } from "./CachedImage";
 import { useZoomableImage } from "../hooks/useZoomableImage";
 import { formatArchiveDescription } from "../lib/archiveDescription";
+import { prefetchImageUris } from "../lib/imagePrefetch";
 import { theme } from "../theme";
 
 export interface LightboxSlide {
@@ -44,6 +46,7 @@ export function ImageLightbox({
   const { width: screenWidth } = useWindowDimensions();
   const sideNavInset = screenWidth >= 1024 ? 24 : screenWidth >= 768 ? 16 : 12;
   const zoom = useZoomableImage(BASE_IMAGE_W, BASE_IMAGE_H);
+  const [imageLoading, setImageLoading] = useState(true);
   const slide = slides[index];
   const canNavigate = slides.length > 1 && typeof onIndexChange === "function";
   const canGoPrevious = canNavigate && index > 0;
@@ -74,7 +77,16 @@ export function ImageLightbox({
 
   useEffect(() => {
     zoom.resetZoom();
+    setImageLoading(true);
   }, [slide?.uri, zoom.resetZoom]);
+
+  useEffect(() => {
+    if (!visible || slides.length === 0) return;
+    const uris = [index - 1, index, index + 1]
+      .filter((i) => i >= 0 && i < slides.length)
+      .map((i) => slides[i].uri);
+    prefetchImageUris(uris, "high");
+  }, [visible, index, slides]);
 
   if (!visible || !slide) return null;
 
@@ -120,13 +132,21 @@ export function ImageLightbox({
                     { scale: zoom.zoomLevel },
                   ],
                 }}>
-                <Image
-                  key={slide.uri}
-                  source={{ uri: slide.uri }}
+                <CachedImage
+                  uri={slide.uri}
                   style={styles.image}
                   resizeMode="contain"
+                  priority="high"
+                  onLoadEnd={() => setImageLoading(false)}
+                  onError={() => setImageLoading(false)}
                 />
               </View>
+              {imageLoading ? (
+                <ActivityIndicator
+                  style={styles.imageLoader}
+                  color={theme.colors.accentCyan}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -252,6 +272,11 @@ const styles = StyleSheet.create({
   image: {
     width: BASE_IMAGE_W,
     height: BASE_IMAGE_H,
+  },
+  imageLoader: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
   },
   footer: {
     paddingHorizontal: 16,

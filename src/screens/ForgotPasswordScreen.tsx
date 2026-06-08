@@ -14,6 +14,7 @@ import {
   resetPasswordWithCode,
 } from "../api/client";
 import { ScreenChrome } from "../components/ScreenChrome";
+import { PasswordInput } from "../components/PasswordInput";
 import { theme } from "../theme";
 
 type Step = "email" | "code" | "password";
@@ -121,25 +122,21 @@ export function ForgotPasswordScreen({ onBack, onSuccess }: Props) {
           <>
             <View style={styles.field}>
               <Text style={styles.label}>New password</Text>
-              <TextInput
-                style={styles.input}
+              <PasswordInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder="At least 8 characters"
                 placeholderTextColor={theme.colors.textMuted}
-                secureTextEntry
                 editable={!loading}
               />
             </View>
             <View style={styles.field}>
               <Text style={styles.label}>Confirm password</Text>
-              <TextInput
-                style={styles.input}
+              <PasswordInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Repeat password"
                 placeholderTextColor={theme.colors.textMuted}
-                secureTextEntry
                 editable={!loading}
               />
             </View>

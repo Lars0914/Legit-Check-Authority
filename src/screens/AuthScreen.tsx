@@ -13,6 +13,7 @@ import { useAuth } from "../auth/AuthContext";
 import { APP_DISPLAY_NAME, AUTH_ENABLED } from "../config";
 import { isGoogleSignInConfigured } from "../auth/googleSignIn";
 import { ScreenChrome } from "../components/ScreenChrome";
+import { PasswordInput } from "../components/PasswordInput";
 import { theme } from "../theme";
 import { ForgotPasswordScreen } from "./ForgotPasswordScreen";
 
@@ -94,7 +95,8 @@ export function AuthScreen() {
           </View>
           <Text style={styles.heading}>{APP_DISPLAY_NAME}</Text>
           <Text style={styles.sub}>
-            Sign in to search watch guides and verify genuine vs counterfeit.
+            Sign in to browse reference photos and verify genuine vs counterfeit
+            details.
           </Text>
         </View>
 
@@ -146,13 +148,11 @@ export function AuthScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
+          <PasswordInput
             value={password}
             onChangeText={setPassword}
             placeholder={mode === "signup" ? "At least 8 characters" : "Password"}
             placeholderTextColor={theme.colors.textMuted}
-            secureTextEntry
             textContentType={mode === "signup" ? "newPassword" : "password"}
           />
         </View>

@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { CachedImage } from "./CachedImage";
+import { prefetchAheadArchiveThumbs } from "../lib/imagePrefetch";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
@@ -14,10 +15,20 @@ import type { ArchiveImage as ArchiveImageType } from "../types/api";
 interface Props {
   image: ArchiveImageType;
   priority?: boolean;
+  listIndex?: number;
+  imageUrls?: string[];
+  footer?: ReactNode;
   onPress?: () => void;
 }
 
-export function ArchiveImage({ image, priority = false, onPress }: Props) {
+export function ArchiveImage({
+  image,
+  priority = false,
+  listIndex,
+  imageUrls,
+  footer,
+  onPress,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const thumbUri = resolveArchiveImageUrl(image.url, "thumb");
@@ -25,10 +36,12 @@ export function ArchiveImage({ image, priority = false, onPress }: Props) {
   useEffect(() => {
     setLoading(true);
     setError(false);
-    if (priority) {
-      Image.prefetch(thumbUri).catch(() => undefined);
-    }
-  }, [image.url, priority, thumbUri]);
+  }, [image.url]);
+
+  useEffect(() => {
+    if (listIndex == null || !imageUrls?.length) return;
+    prefetchAheadArchiveThumbs(imageUrls, listIndex, 2);
+  }, [imageUrls, listIndex]);
 
   return (
     <View style={styles.wrap}>
@@ -47,10 +60,11 @@ export function ArchiveImage({ image, priority = false, onPress }: Props) {
           {error ? (
             <Text style={styles.errorText}>Failed to load image</Text>
           ) : (
-            <Image
-              source={{ uri: thumbUri, cache: "force-cache" }}
+            <CachedImage
+              uri={thumbUri}
               style={styles.image}
               resizeMode="cover"
+              priority={priority ? "high" : "normal"}
               onLoadEnd={() => setLoading(false)}
               onError={() => {
                 setLoading(false);
@@ -60,12 +74,13 @@ export function ArchiveImage({ image, priority = false, onPress }: Props) {
           )}
         </View>
       </Pressable>
+      {footer}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
+  wrap: { marginBottom: 0 },
   pressed: { opacity: 0.92 },
   box: {
     minHeight: 220,

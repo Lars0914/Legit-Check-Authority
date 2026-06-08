@@ -17,12 +17,12 @@ import {
   AUTH_ENABLED,
   paymentsUiEnabled,
 } from "../config";
-import { ArchiveImage } from "../components/ArchiveImage";
 import { ArchiveImageViewer } from "../components/ArchiveImageViewer";
+import { ArchiveModelImageList } from "../components/ArchiveModelImageList";
 import { ImageLightbox } from "../components/ImageLightbox";
 import { ScreenChrome } from "../components/ScreenChrome";
-import { formatArchiveDescription } from "../lib/archiveDescription";
-import { prefetchArchiveImages, resolveArchiveImageUrl } from "../lib/imageUrl";
+import { prefetchArchiveThumbs, prefetchNeighborArchiveFull } from "../lib/imagePrefetch";
+import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { useResponsiveLayout } from "../lib/responsive";
 import { theme } from "../theme";
 import type { ArchiveBrand, ArchiveImage as ArchiveImageType, ArchiveModel } from "../types/api";
@@ -159,7 +159,7 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
       try {
         const detail = await fetchArchiveModel(brandSlug, modelSlug);
         setModelImages((prev) => ({ ...prev, [key]: detail.images }));
-        prefetchArchiveImages(detail.images.map((img) => img.url));
+        prefetchArchiveThumbs(detail.images.map((img) => img.url));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load images");
       } finally {
@@ -224,6 +224,16 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
     openModel(brand.slug, model.slug);
   }, [flatResults, isSearching, loading, openModel]);
 
+  useEffect(() => {
+    if (!galleryLightbox) return;
+    const images = modelImages[galleryLightbox.key];
+    if (!images?.length) return;
+    prefetchNeighborArchiveFull(
+      images.map((img) => img.url),
+      galleryLightbox.index,
+    );
+  }, [galleryLightbox, modelImages]);
+
   const renderModelImages = (brandSlug: string, modelSlug: string) => {
     const key = modelKey(brandSlug, modelSlug);
     const images = modelImages[key] ?? [];
@@ -236,21 +246,12 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             style={styles.modelLoader}
           />
         ) : null}
-        {images.map((image, index) => {
-          const insight = formatArchiveDescription(image.description);
-          return (
-            <View key={image.storagePath}>
-              <ArchiveImage
-                image={image}
-                priority={index < 3}
-                onPress={() => setGalleryLightbox({ key, index })}
-              />
-              {insight ? (
-                <Text style={styles.imageInsight}>{insight}</Text>
-              ) : null}
-            </View>
-          );
-        })}
+        {images.length > 0 ? (
+          <ArchiveModelImageList
+            images={images}
+            onOpenImage={(index) => setGalleryLightbox({ key, index })}
+          />
+        ) : null}
         {!loadingModel && images.length === 0 ? (
           <Text style={styles.emptyImages}>No images found for this model.</Text>
         ) : null}
@@ -927,20 +928,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 13,
     paddingVertical: 12,
-  },
-  imageInsight: {
-    marginTop: 10,
-    marginBottom: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.borderBright,
-    fontSize: 14,
-    lineHeight: 21,
-    color: theme.colors.text,
-    fontWeight: "500",
   },
   chevronCircle: {
     width: 30,

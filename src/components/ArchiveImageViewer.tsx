@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   LayoutChangeEvent,
   Pressable,
   ScrollView,
@@ -11,8 +10,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { CachedImage } from "./CachedImage";
 import { useZoomableImage } from "../hooks/useZoomableImage";
 import { formatArchiveDescription } from "../lib/archiveDescription";
+import { prefetchNeighborArchiveFull } from "../lib/imagePrefetch";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
@@ -48,11 +49,21 @@ export function ArchiveImageViewer({
     ? resolveArchiveImageUrl(current.url, "full")
     : "";
   const [frameSize, setFrameSize] = useState({ w: 1, h: 1 });
+  const [imageLoading, setImageLoading] = useState(true);
   const zoom = useZoomableImage(frameSize.w, frameSize.h);
 
   useEffect(() => {
     zoom.resetZoom();
+    setImageLoading(true);
   }, [current?.storagePath, zoom.resetZoom]);
+
+  useEffect(() => {
+    if (images.length === 0) return;
+    prefetchNeighborArchiveFull(
+      images.map((image) => image.url),
+      index,
+    );
+  }, [images, index]);
 
   useEffect(() => {
     setTextHeight(null);
@@ -149,12 +160,21 @@ export function ArchiveImageViewer({
                     { scale: zoom.zoomLevel },
                   ],
                 }}>
-                <Image
-                  source={{ uri: fullUri }}
+                <CachedImage
+                  uri={fullUri}
                   style={{ width: zoom.baseW, height: zoom.baseH }}
                   resizeMode="contain"
+                  priority="high"
+                  onLoadEnd={() => setImageLoading(false)}
+                  onError={() => setImageLoading(false)}
                 />
               </View>
+              {imageLoading ? (
+                <ActivityIndicator
+                  style={styles.imageLoader}
+                  color={theme.colors.accentGold}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -335,6 +355,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
   stage: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageLoader: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
   },
