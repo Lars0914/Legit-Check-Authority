@@ -12,12 +12,12 @@ import {
   View,
 } from "react-native";
 import { useZoomableImage } from "../hooks/useZoomableImage";
+import { formatArchiveDescription } from "../lib/archiveDescription";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
 
 const MAX_INSIGHT_HEIGHT_RATIO = 0.25;
-const TOOLBAR_HEIGHT_RATIO = 0.05;
 const INSIGHT_PADDING_VERTICAL = 16;
 const INSIGHT_LINE_HEIGHT = 15;
 
@@ -38,9 +38,9 @@ export function ArchiveImageViewer({
   loading = false,
   onIndexChange,
 }: Props) {
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const maxInsightHeight = Math.round(screenHeight * MAX_INSIGHT_HEIGHT_RATIO);
-  const toolbarHeight = Math.round(screenHeight * TOOLBAR_HEIGHT_RATIO);
+  const sideNavInset = screenWidth >= 1024 ? 24 : screenWidth >= 768 ? 16 : 12;
   const [textHeight, setTextHeight] = useState<number | null>(null);
 
   const current = images[index];
@@ -157,6 +157,52 @@ export function ArchiveImageViewer({
               </View>
             </View>
           </View>
+
+          {images.length > 1 ? (
+            <>
+              <View style={[styles.sideNavSlot, { left: sideNavInset }]}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.sideNavBtn,
+                    !canGoPrevious && styles.sideNavBtnDisabled,
+                    pressed && canGoPrevious && styles.sideNavBtnPressed,
+                  ]}
+                  onPress={goPrevious}
+                  disabled={!canGoPrevious}
+                  accessibilityLabel="Previous image"
+                  accessibilityRole="button">
+                  <Text
+                    style={[
+                      styles.sideNavBtnText,
+                      !canGoPrevious && styles.sideNavBtnTextDisabled,
+                    ]}>
+                    {"<"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.sideNavSlot, { right: sideNavInset }]}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.sideNavBtn,
+                    !canGoNext && styles.sideNavBtnDisabled,
+                    pressed && canGoNext && styles.sideNavBtnPressed,
+                  ]}
+                  onPress={goNext}
+                  disabled={!canGoNext}
+                  accessibilityLabel="Next image"
+                  accessibilityRole="button">
+                  <Text
+                    style={[
+                      styles.sideNavBtnText,
+                      !canGoNext && styles.sideNavBtnTextDisabled,
+                    ]}>
+                    {">"}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
         </View>
       </View>
 
@@ -182,59 +228,12 @@ export function ArchiveImageViewer({
             showsVerticalScrollIndicator={insightScrollable}
             scrollEnabled={insightScrollable}
             nestedScrollEnabled>
-            <Text style={styles.insightText}>{current.description}</Text>
+            <Text style={styles.insightText}>
+              {formatArchiveDescription(current.description) ?? ""}
+            </Text>
           </ScrollView>
         </>
       ) : null}
-
-      <View style={[styles.toolbar, { minHeight: Math.max(toolbarHeight, 44) }]}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.toolbarBtn,
-            !canGoPrevious && styles.toolbarBtnDisabled,
-            pressed && canGoPrevious && styles.toolbarBtnPressed,
-          ]}
-          onPress={goPrevious}
-          disabled={!canGoPrevious}
-          accessibilityLabel="Previous image"
-          accessibilityRole="button">
-          <Text
-            style={[
-              styles.toolbarBtnSymbol,
-              !canGoPrevious && styles.toolbarBtnTextDisabled,
-            ]}>
-            {"<"}
-          </Text>
-        </Pressable>
-
-        <Text style={styles.toolbarCounter}>
-          {index + 1} / {images.length}
-        </Text>
-        {zoom.zoomLevel > zoom.minZoom + 0.05 ? (
-          <Text style={styles.zoomLabel}>
-            {Math.round(zoom.zoomLevel * 100)}%
-          </Text>
-        ) : null}
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.toolbarBtn,
-            !canGoNext && styles.toolbarBtnDisabled,
-            pressed && canGoNext && styles.toolbarBtnPressed,
-          ]}
-          onPress={goNext}
-          disabled={!canGoNext}
-          accessibilityLabel="Next image"
-          accessibilityRole="button">
-          <Text
-            style={[
-              styles.toolbarBtnSymbol,
-              !canGoNext && styles.toolbarBtnTextDisabled,
-            ]}>
-            {">"}
-          </Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -295,10 +294,45 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.imageBg,
     overflow: "hidden",
+    position: "relative",
   },
   viewport: {
     flex: 1,
     overflow: "hidden",
+  },
+  sideNavSlot: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  sideNavBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  sideNavBtnPressed: { opacity: 0.82, transform: [{ scale: 0.96 }] },
+  sideNavBtnDisabled: { opacity: 0.35 },
+  sideNavBtnText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: theme.colors.text,
+    lineHeight: 22,
+    marginTop: -1,
+  },
+  sideNavBtnTextDisabled: {
+    color: theme.colors.textMuted,
   },
   stage: {
     justifyContent: "center",
@@ -334,53 +368,5 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     color: theme.colors.text,
     fontWeight: "400",
-  },
-  toolbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  toolbarBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  toolbarBtnPressed: { opacity: 0.85 },
-  toolbarBtnDisabled: { opacity: 0.4 },
-  toolbarBtnSymbol: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.colors.text,
-    lineHeight: 18,
-  },
-  toolbarBtnTextDisabled: {
-    color: theme.colors.textMuted,
-  },
-  toolbarCounter: {
-    minWidth: 52,
-    textAlign: "center",
-    fontSize: 12,
-    fontWeight: "700",
-    color: theme.colors.text,
-  },
-  zoomLabel: {
-    minWidth: 48,
-    textAlign: "center",
-    fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.accentCyan,
   },
 });

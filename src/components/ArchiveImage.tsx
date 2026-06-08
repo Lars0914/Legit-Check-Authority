@@ -7,7 +7,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { ImageLightbox } from "./ImageLightbox";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
@@ -15,14 +14,13 @@ import type { ArchiveImage as ArchiveImageType } from "../types/api";
 interface Props {
   image: ArchiveImageType;
   priority?: boolean;
+  onPress?: () => void;
 }
 
-export function ArchiveImage({ image, priority = false }: Props) {
+export function ArchiveImage({ image, priority = false, onPress }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   const thumbUri = resolveArchiveImageUrl(image.url, "thumb");
-  const fullUri = resolveArchiveImageUrl(image.url, "full");
 
   useEffect(() => {
     setLoading(true);
@@ -35,7 +33,7 @@ export function ArchiveImage({ image, priority = false }: Props) {
   return (
     <View style={styles.wrap}>
       <Pressable
-        onPress={() => !error && !loading && setLightboxOpen(true)}
+        onPress={() => !error && !loading && onPress?.()}
         accessibilityRole="button"
         accessibilityLabel="View watch image"
         style={({ pressed }) => [pressed && styles.pressed]}>
@@ -62,13 +60,6 @@ export function ArchiveImage({ image, priority = false }: Props) {
           )}
         </View>
       </Pressable>
-
-      <ImageLightbox
-        uri={fullUri}
-        visible={lightboxOpen}
-        description={image.description}
-        onClose={() => setLightboxOpen(false)}
-      />
     </View>
   );
 }

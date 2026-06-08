@@ -105,10 +105,15 @@ export function GuideImage({
       ) : null}
 
       <ImageLightbox
-        uri={imageUri}
+        slides={[
+          {
+            uri: imageUri,
+            label,
+            cropHint: photo.cropHint,
+          },
+        ]}
+        index={0}
         visible={lightboxOpen}
-        label={label}
-        cropHint={photo.cropHint}
         onClose={() => setLightboxOpen(false)}
       />
     </View>

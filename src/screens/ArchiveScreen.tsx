@@ -19,8 +19,10 @@ import {
 } from "../config";
 import { ArchiveImage } from "../components/ArchiveImage";
 import { ArchiveImageViewer } from "../components/ArchiveImageViewer";
+import { ImageLightbox } from "../components/ImageLightbox";
 import { ScreenChrome } from "../components/ScreenChrome";
-import { prefetchArchiveImages } from "../lib/imageUrl";
+import { formatArchiveDescription } from "../lib/archiveDescription";
+import { prefetchArchiveImages, resolveArchiveImageUrl } from "../lib/imageUrl";
 import { useResponsiveLayout } from "../lib/responsive";
 import { theme } from "../theme";
 import type { ArchiveBrand, ArchiveImage as ArchiveImageType, ArchiveModel } from "../types/api";
@@ -96,6 +98,10 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
   >({});
   const [loadingModel, setLoadingModel] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [galleryLightbox, setGalleryLightbox] = useState<{
+    key: string;
+    index: number;
+  } | null>(null);
   const autoOpenedRef = useRef<string | null>(null);
 
   const { isWide, sidebarWidth } = useResponsiveLayout();
@@ -230,14 +236,21 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             style={styles.modelLoader}
           />
         ) : null}
-        {images.map((image, index) => (
-          <View key={image.storagePath}>
-            <ArchiveImage image={image} priority={index < 3} />
-            {image.description ? (
-              <Text style={styles.imageInsight}>{image.description}</Text>
-            ) : null}
-          </View>
-        ))}
+        {images.map((image, index) => {
+          const insight = formatArchiveDescription(image.description);
+          return (
+            <View key={image.storagePath}>
+              <ArchiveImage
+                image={image}
+                priority={index < 3}
+                onPress={() => setGalleryLightbox({ key, index })}
+              />
+              {insight ? (
+                <Text style={styles.imageInsight}>{insight}</Text>
+              ) : null}
+            </View>
+          );
+        })}
         {!loadingModel && images.length === 0 ? (
           <Text style={styles.emptyImages}>No images found for this model.</Text>
         ) : null}
@@ -596,6 +609,23 @@ export function ArchiveScreen({ onOpenSubscription }: Props) {
             ? flatResults.map((item) => renderSearchResult(item, false))
             : brands.map((brand) => renderBrowseBrand(brand, false))}
         </ScrollView>
+
+        {galleryLightbox && modelImages[galleryLightbox.key]?.length ? (
+          <ImageLightbox
+            slides={modelImages[galleryLightbox.key].map((image) => ({
+              uri: resolveArchiveImageUrl(image.url, "full"),
+              description: image.description,
+            }))}
+            index={galleryLightbox.index}
+            visible
+            onIndexChange={(index) =>
+              setGalleryLightbox((prev) =>
+                prev ? { ...prev, index } : null,
+              )
+            }
+            onClose={() => setGalleryLightbox(null)}
+          />
+        ) : null}
       </View>
     </ScreenChrome>
   );
