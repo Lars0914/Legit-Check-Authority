@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   imageInsight: {
-    marginTop: 10,
-    marginBottom: 14,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: theme.radius.md,
