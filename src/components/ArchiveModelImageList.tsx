@@ -1,13 +1,7 @@
-import React, { useCallback, useRef } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  type ViewToken,
-} from "react-native";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { ArchiveImage } from "./ArchiveImage";
 import { formatArchiveDescription } from "../lib/archiveDescription";
-import { prefetchAheadArchiveThumbs } from "../lib/imagePrefetch";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
 
@@ -16,37 +10,17 @@ interface Props {
   onOpenImage: (index: number) => void;
 }
 
+/** Static list — renders inside ArchiveScreen ScrollView (no nested FlatList). */
 export function ArchiveModelImageList({ images, onOpenImage }: Props) {
   const imageUrls = images.map((image) => image.url);
-  const lastPrefetchFrom = useRef(-1);
-
-  const prefetchFromIndex = useCallback(
-    (fromIndex: number) => {
-      if (fromIndex === lastPrefetchFrom.current) return;
-      lastPrefetchFrom.current = fromIndex;
-      prefetchAheadArchiveThumbs(imageUrls, fromIndex, 2);
-    },
-    [imageUrls],
-  );
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length === 0) return;
-      const maxIndex = Math.max(
-        ...viewableItems.map((item) => item.index ?? 0),
-      );
-      prefetchFromIndex(maxIndex);
-    },
-  ).current;
 
   return (
-    <FlatList
-      data={images}
-      keyExtractor={(item) => item.storagePath}
-      renderItem={({ item, index }) => {
+    <View style={styles.list}>
+      {images.map((item, index) => {
         const insight = formatArchiveDescription(item.description);
         return (
           <ArchiveImage
+            key={item.storagePath}
             image={item}
             listIndex={index}
             imageUrls={imageUrls}
@@ -59,17 +33,15 @@ export function ArchiveModelImageList({ images, onOpenImage }: Props) {
             }
           />
         );
-      }}
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={{ itemVisiblePercentThreshold: 20 }}
-      scrollEventThrottle={16}
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-    />
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  list: {
+    gap: 0,
+  },
   imageInsight: {
     marginTop: 10,
     marginBottom: 14,
