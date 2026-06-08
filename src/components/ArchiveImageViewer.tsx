@@ -7,12 +7,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useZoomableImage } from "../hooks/useZoomableImage";
 import { resolveArchiveImageUrl } from "../lib/imageUrl";
 import { theme } from "../theme";
 import type { ArchiveImage as ArchiveImageType } from "../types/api";
+
+const IMAGE_HEIGHT_RATIO = 0.8;
+const INSIGHT_HEIGHT_RATIO = 0.15;
+const TOOLBAR_HEIGHT_RATIO = 0.05;
 
 interface Props {
   brandName: string;
@@ -31,27 +36,17 @@ export function ArchiveImageViewer({
   loading = false,
   onIndexChange,
 }: Props) {
+  const { height: screenHeight } = useWindowDimensions();
+  const imageSectionHeight = Math.round(screenHeight * IMAGE_HEIGHT_RATIO);
+  const insightSectionHeight = Math.round(screenHeight * INSIGHT_HEIGHT_RATIO);
+  const toolbarHeight = Math.round(screenHeight * TOOLBAR_HEIGHT_RATIO);
+
   const current = images[index];
   const fullUri = current
     ? resolveArchiveImageUrl(current.url, "full")
     : "";
   const [frameSize, setFrameSize] = useState({ w: 1, h: 1 });
-  const [bodyHeight, setBodyHeight] = useState(0);
   const zoom = useZoomableImage(frameSize.w, frameSize.h);
-
-  const insightMaxHeight = 93;
-  const bodySpacing = theme.spacing.sm + theme.spacing.xs;
-  const imageFrameHeight =
-    bodyHeight > 0
-      ? Math.max(
-          120,
-          Math.round(
-            (bodyHeight -
-              (current?.description ? insightMaxHeight + bodySpacing : 0)) /
-              2,
-          ),
-        )
-      : undefined;
 
   useEffect(() => {
     zoom.resetZoom();
@@ -96,27 +91,17 @@ export function ArchiveImageViewer({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.captionBar}>
-        <Text style={styles.captionBrand} numberOfLines={1}>
-          {brandName}
-        </Text>
-        <Text style={styles.captionModel} numberOfLines={1}>
-          {modelName}
-        </Text>
-      </View>
+      <View style={[styles.imageSection, { height: imageSectionHeight }]}>
+        <View style={styles.captionBar}>
+          <Text style={styles.captionBrand} numberOfLines={1}>
+            {brandName}
+          </Text>
+          <Text style={styles.captionModel} numberOfLines={1}>
+            {modelName}
+          </Text>
+        </View>
 
-      <View
-        style={styles.body}
-        onLayout={(event) => {
-          const { height } = event.nativeEvent.layout;
-          if (height > 0) setBodyHeight(height);
-        }}>
-        <View
-          style={[
-            styles.viewerFrame,
-            imageFrameHeight != null && { height: imageFrameHeight },
-          ]}
-          onLayout={handleFrameLayout}>
+        <View style={styles.viewerFrame} onLayout={handleFrameLayout}>
           <View
             style={styles.viewport}
             onLayout={zoom.handleViewportLayout}
@@ -145,18 +130,18 @@ export function ArchiveImageViewer({
             </View>
           </View>
         </View>
-
-        {current.description ? (
-          <ScrollView
-            style={[styles.insightScroll, { maxHeight: insightMaxHeight }]}
-            contentContainerStyle={styles.insightScrollContent}
-            showsVerticalScrollIndicator>
-            <Text style={styles.insightText}>{current.description}</Text>
-          </ScrollView>
-        ) : null}
       </View>
 
-      <View style={styles.toolbar}>
+      <ScrollView
+        style={[styles.insightScroll, { height: insightSectionHeight }]}
+        contentContainerStyle={styles.insightScrollContent}
+        showsVerticalScrollIndicator>
+        {current.description ? (
+          <Text style={styles.insightText}>{current.description}</Text>
+        ) : null}
+      </ScrollView>
+
+      <View style={[styles.toolbar, { height: toolbarHeight }]}>
         <Pressable
           style={({ pressed }) => [
             styles.toolbarBtn,
@@ -235,45 +220,27 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 360,
   },
+  imageSection: {
+    paddingHorizontal: theme.spacing.sm,
+  },
   captionBar: {
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: 4,
   },
   captionBrand: {
     ...theme.font.label,
     color: theme.colors.accentGold,
     marginBottom: 2,
+    fontSize: 9,
   },
   captionModel: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: theme.colors.text,
   },
-  body: {
-    flex: 1,
-  },
-  insightScroll: {
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.borderBright,
-  },
-  insightScrollContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  insightText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: theme.colors.text,
-    fontWeight: "500",
-  },
   viewerFrame: {
-    marginHorizontal: theme.spacing.sm,
+    flex: 1,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -288,59 +255,69 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  insightScroll: {
+    marginHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderBright,
+  },
+  insightScrollContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  insightText: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: theme.colors.text,
+    fontWeight: "400",
+  },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
   toolbarBtn: {
-    minWidth: 44,
-    height: 44,
+    minWidth: 40,
+    height: 36,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.bg,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   toolbarBtnWide: {
-    minWidth: 96,
-    paddingHorizontal: 16,
+    minWidth: 88,
+    paddingHorizontal: 12,
   },
   toolbarBtnPressed: { opacity: 0.85 },
   toolbarBtnDisabled: { opacity: 0.4 },
   toolbarBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "700",
     color: theme.colors.text,
   },
   toolbarBtnTextDisabled: {
     color: theme.colors.textMuted,
   },
-  toolbarBtnSymbol: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: theme.colors.text,
-    lineHeight: 24,
-  },
   toolbarCounter: {
-    minWidth: 72,
+    minWidth: 64,
     textAlign: "center",
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: theme.colors.text,
   },
   zoomLabel: {
-    minWidth: 72,
+    minWidth: 48,
     textAlign: "center",
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "700",
     color: theme.colors.accentCyan,
   },
