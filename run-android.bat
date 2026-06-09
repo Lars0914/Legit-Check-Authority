@@ -32,7 +32,7 @@ if errorlevel 1 (
 adb reverse tcp:8081 tcp:8081 >nul 2>&1
 
 echo Building and installing...
-call npx react-native run-android --no-packager --port 8081
+call npx react-native run-android --no-packager --port 8081 --active-arch-only
 if errorlevel 1 (
   echo Build failed. Is Metro running? Run run-metro.bat first.
   pause

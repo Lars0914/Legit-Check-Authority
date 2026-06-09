@@ -23,12 +23,15 @@ Double-click **`run.bat`** (one script; window stays open so you can read errors
 
 | Command | What it does | Typical time |
 |---------|----------------|--------------|
-| `run.bat` | Emulator if needed → Metro → **quick launch** if `com.legitcheckauthority.app` is already installed | ~20–30 s |
-| `run.bat rebuild` | Same, but always runs Gradle + native build (needed after package/native changes) | 1–3 min |
+| `run.bat` | Emulator if needed → Metro → **quick launch** if app already installed | ~20–30 s |
+| `run.bat rebuild` | Incremental native build, **one CPU arch only** (connected device/emulator) | ~1–2 min |
+| `run.bat clean` | Full clean + rebuild (only if autolinking breaks) | slower |
+| `build-apk.bat` | Release APK, **arm64-v8a only** (most phones) | ~2–4 min |
+| `build-apk.bat universal` | APK with all CPU architectures (slowest) | ~6–12 min |
 
 Optional helpers: `run-metro.bat`, `run-android.bat`, `run-emulator.bat`.
 
-**Why a run felt slow:** A full Gradle rebuild downloads dependencies and compiles native code (e.g. Google Sign-In). That happens on first install, after `run.bat rebuild`, or if the Gradle cache was cleared. Day-to-day JS edits only need `run.bat` (quick) + Metro reload (**R** in the emulator).
+**Faster builds:** Gradle parallel + cache are enabled. Only **one ABI** is compiled by default (`arm64-v8a`). `run.bat` / `run-android.bat` pass `--active-arch-only` so the emulator gets `x86_64` only. For JS-only changes use `run.bat` (no Gradle). APK without a phone: `build-apk.bat`.
 
 **Before using the app:** start the backend (`cd ..\backend && npm run dev`).
 

@@ -2,7 +2,8 @@
 REM DEV MODE - open app on emulator for fast UI work. Does NOT build an APK.
 REM   run.bat          daily dev (fast - no Gradle if app already installed)
 REM   run.bat install  first-time install on emulator (slow, once)
-REM   run.bat rebuild  after native/Android changes only
+REM   run.bat rebuild  after native/Android changes (incremental, one ABI)
+REM   run.bat clean    full native clean when autolinking breaks
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 title Legit Check Authority - DEV
@@ -12,7 +13,7 @@ set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
 set "MODE=dev"
 if /I "%~1"=="install" set "MODE=install"
 if /I "%~1"=="rebuild" set "MODE=rebuild"
-if /I "%~1"=="clean" set "MODE=rebuild"
+if /I "%~1"=="clean" set "MODE=clean"
 
 echo.
 echo  DEV MODE - UI preview on emulator (not an APK build)
@@ -99,17 +100,18 @@ if not errorlevel 1 set "APP_INSTALLED=1"
 
 if "%MODE%"=="dev" if "!APP_INSTALLED!"=="1" goto :launch
 if "%MODE%"=="rebuild" goto :install
+if "%MODE%"=="clean" goto :install
 if "%MODE%"=="install" goto :install
 if "!APP_INSTALLED!"=="0" goto :install
 goto :launch
 
 :install
-if "%MODE%"=="rebuild" (
-  echo   Clearing stale autolinking cache and old package if present...
+if "%MODE%"=="clean" (
+  echo   Full clean - clearing autolinking cache...
   rmdir /s /q android\build\generated\autolinking 2>nul
   adb uninstall com.ticker 2>nul
 )
-echo [4/4] Installing app on emulator - first time or rebuild, 1-3 min
+echo [4/4] Installing app on emulator - first time or rebuild
 echo   This is NOT an APK - just puts the dev app on the emulator
 call npx react-native run-android --no-packager --port 8081 --active-arch-only
 if errorlevel 1 goto :fail
@@ -133,7 +135,7 @@ echo  Keep Ticker Metro window open
 echo.
 echo  First install slow?  run.bat install
 echo  Native code change?  run.bat rebuild
-echo  Release APK later?   android\gradlew assembleRelease
+echo  Release APK?         build-apk.bat
 echo ========================================
 goto :end
 
