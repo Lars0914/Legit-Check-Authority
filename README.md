@@ -31,7 +31,9 @@ Double-click **`run.bat`** (one script; window stays open so you can read errors
 
 Optional helpers: `run-metro.bat`, `run-android.bat`, `run-emulator.bat`.
 
-**Faster builds:** Gradle parallel + cache are enabled. Only **one ABI** is compiled by default (`arm64-v8a`). `run.bat` / `run-android.bat` pass `--active-arch-only` so the emulator gets `x86_64` only. For JS-only changes use `run.bat` (no Gradle). APK without a phone: `build-apk.bat`.
+**Faster builds:** Gradle parallel + cache are enabled (`configure-on-demand` is **off** — turning it on hangs RN builds). Only **one ABI** is compiled by default (`arm64-v8a`). `run.bat` / `run-android.bat` pass `--active-arch-only` so the emulator gets `x86_64` only. For JS-only changes use `run.bat` (no Gradle). APK without a phone: `build-apk.bat`.
+
+If Gradle seems stuck for many minutes on **Resolve files of configuration**, stop the build, run `cd android && gradlew.bat --stop`, then rebuild. First build after `npm install` downloads Maven artifacts (one-time, network-dependent).
 
 **Before using the app:** start the backend (`cd ..\backend && npm run dev`).
 

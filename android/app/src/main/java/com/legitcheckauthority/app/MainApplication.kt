@@ -6,8 +6,6 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
-import com.facebook.react.modules.network.OkHttpClientProvider
-import java.util.concurrent.TimeUnit
 
 class MainApplication : Application(), ReactApplication {
 
@@ -24,15 +22,6 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
-    OkHttpClientProvider.setOkHttpClientFactory {
-      OkHttpClientProvider.createClientBuilder(applicationContext)
-        .dns(IPv4PreferredDns())
-        .retryOnConnectionFailure(true)
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .build()
-    }
     loadReactNative(this)
   }
 }

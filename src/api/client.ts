@@ -45,13 +45,9 @@ async function requestJson<T>(
   let res: Response;
   try {
     res = await fetch(url, { ...init, headers });
-  } catch (err) {
-    const detail =
-      err instanceof Error && err.message.trim()
-        ? err.message.trim()
-        : "connection failed";
+  } catch {
     throw new Error(
-      `Network request failed (${url}). ${detail} If you use a VPN, try turning it off and reload the app.`,
+      `Network request failed (${url}). Check API_BASE_URL in src/config.ts and that the backend is running.`,
     );
   }
 
