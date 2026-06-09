@@ -4,7 +4,6 @@
 
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet, View } from "react-native";
-import { setApiAuthToken } from "./src/api/client";
 import { AuthProvider, useAuth } from "./src/auth/AuthContext";
 import { AUTH_ENABLED, paymentsUiEnabled } from "./src/config";
 import { configureGoogleSignIn } from "./src/auth/googleSignIn";
@@ -16,10 +15,6 @@ import { theme } from "./src/theme";
 function AppContent() {
   const { token, user, ready } = useAuth();
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
-
-  useEffect(() => {
-    setApiAuthToken(AUTH_ENABLED ? token : null);
-  }, [token]);
 
   useEffect(() => {
     if (AUTH_ENABLED) {

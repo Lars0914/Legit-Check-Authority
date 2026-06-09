@@ -83,8 +83,9 @@ export function ForgotPasswordScreen({ onBack, onSuccess }: Props) {
         <Text style={styles.heading}>Reset password</Text>
         <Text style={styles.sub}>
           {step === "email" &&
-            "Enter your email and we will send a 6-digit verification code."}
-          {step === "code" && "Enter the code we sent to your email."}
+            "Enter the email address on your account. Use the same address you sign in with (including Google sign-in)."}
+          {step === "code" &&
+            "Enter the 6-digit code from your email. Check spam if you do not see it within a few minutes."}
           {step === "password" && "Choose a new password."}
         </Text>
 

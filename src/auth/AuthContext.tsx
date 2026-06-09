@@ -4,9 +4,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { Alert } from "react-native";
 import {
+  fetchAuthMe,
+  setApiAuthToken,
   signIn as apiSignIn,
   signInWithGoogle as apiSignInWithGoogle,
   signUp as apiSignUp,
@@ -19,6 +23,8 @@ import {
   saveSession,
   type StoredUser,
 } from "./storage";
+
+const ACCESS_CHECK_INTERVAL_MS = 1000;
 
 interface AuthContextValue {
   user: StoredUser | null;
@@ -36,6 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const signOutRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    setApiAuthToken(AUTH_ENABLED ? token : null);
+  }, [token]);
 
   useEffect(() => {
     if (!AUTH_ENABLED) {
@@ -97,6 +108,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  signOutRef.current = signOut;
+
+  useEffect(() => {
+    if (!AUTH_ENABLED || !token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkAccess = async () => {
+      try {
+        const { user: me } = await fetchAuthMe();
+        if (cancelled || me.approvalStatus !== "denied") {
+          return;
+        }
+
+        cancelled = true;
+        Alert.alert(
+          "Access revoked",
+          "Your account was denied by an administrator. You have been signed out.",
+          [{ text: "OK" }],
+        );
+        await signOutRef.current();
+      } catch {
+        /* ignore transient network errors */
+      }
+    };
+
+    void checkAccess();
+    const intervalId = setInterval(checkAccess, ACCESS_CHECK_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [token]);
 
   const value = useMemo(
     () => ({

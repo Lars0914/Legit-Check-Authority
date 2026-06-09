@@ -14,6 +14,10 @@ export interface AuthResponse {
   user: { id: number; mail: string };
 }
 
+export interface AuthMeResponse {
+  user: { id: number; mail: string; approvalStatus: ApprovalStatus };
+}
+
 export type ApprovalStatus = "pending" | "approved" | "denied";
 
 export interface SignUpResponse {
@@ -88,6 +92,10 @@ export function signInWithGoogle(idToken: string): Promise<AuthResponse> {
     method: "POST",
     body: JSON.stringify({ idToken }),
   });
+}
+
+export function fetchAuthMe(): Promise<AuthMeResponse> {
+  return getJson<AuthMeResponse>("/auth/me");
 }
 
 export function requestPasswordReset(
