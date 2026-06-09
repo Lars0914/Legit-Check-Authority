@@ -14,6 +14,15 @@ export interface AuthResponse {
   user: { id: number; mail: string };
 }
 
+export type ApprovalStatus = "pending" | "approved" | "denied";
+
+export interface SignUpResponse {
+  user: { id: number; mail: string };
+  token?: string;
+  approvalStatus: ApprovalStatus;
+  message: string;
+}
+
 let authToken: string | null = null;
 
 export function setApiAuthToken(token: string | null): void {
@@ -60,8 +69,8 @@ async function getJson<T>(path: string): Promise<T> {
   return requestJson<T>(path);
 }
 
-export function signUp(mail: string, password: string): Promise<AuthResponse> {
-  return requestJson<AuthResponse>("/auth/signup", {
+export function signUp(mail: string, password: string): Promise<SignUpResponse> {
+  return requestJson<SignUpResponse>("/auth/signup", {
     method: "POST",
     body: JSON.stringify({ mail, password }),
   });

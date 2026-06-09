@@ -42,6 +42,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   if (forgotOpen) {
     return (
@@ -71,11 +72,15 @@ export function AuthScreen() {
   const submit = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       if (mode === "signin") {
         await signIn(mail, password);
       } else {
-        await signUp(mail, password);
+        const message = await signUp(mail, password);
+        setSuccess(message);
+        setMode("signin");
+        setPassword("");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
@@ -106,6 +111,7 @@ export function AuthScreen() {
             onPress={() => {
               setMode("signin");
               setError(null);
+              setSuccess(null);
             }}>
             <Text
               style={[
@@ -120,6 +126,7 @@ export function AuthScreen() {
             onPress={() => {
               setMode("signup");
               setError(null);
+              setSuccess(null);
             }}>
             <Text
               style={[
@@ -170,6 +177,7 @@ export function AuthScreen() {
         ) : null}
 
         {resetDone ? <Text style={styles.info}>{resetDone}</Text> : null}
+        {success ? <Text style={styles.info}>{success}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable
