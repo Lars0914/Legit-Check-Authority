@@ -45,16 +45,19 @@ export function ArchiveImageViewer({
   const [textHeight, setTextHeight] = useState<number | null>(null);
 
   const current = images[index];
-  const fullUri = current
-    ? resolveArchiveImageUrl(current.url, "full")
-    : "";
   const [frameSize, setFrameSize] = useState({ w: 1, h: 1 });
   const [imageLoading, setImageLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const zoom = useZoomableImage(frameSize.w, frameSize.h);
+
+  const fullUri = current
+    ? resolveArchiveImageUrl(current.url, "full", retrying)
+    : "";
 
   useEffect(() => {
     zoom.resetZoom();
     setImageLoading(true);
+    setRetrying(false);
   }, [current?.storagePath, zoom.resetZoom]);
 
   useEffect(() => {
@@ -161,12 +164,20 @@ export function ArchiveImageViewer({
                   ],
                 }}>
                 <CachedImage
+                  key={fullUri}
                   uri={fullUri}
                   style={{ width: zoom.baseW, height: zoom.baseH }}
                   resizeMode="contain"
                   priority="high"
                   onLoadEnd={() => setImageLoading(false)}
-                  onError={() => setImageLoading(false)}
+                  onError={() => {
+                    if (!retrying) {
+                      setRetrying(true);
+                      setImageLoading(true);
+                      return;
+                    }
+                    setImageLoading(false);
+                  }}
                 />
               </View>
               {imageLoading ? (

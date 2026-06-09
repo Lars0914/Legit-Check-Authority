@@ -31,11 +31,13 @@ export function ArchiveImage({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const thumbUri = resolveArchiveImageUrl(image.url, "thumb");
+  const [retrying, setRetrying] = useState(false);
+  const thumbUri = resolveArchiveImageUrl(image.url, "thumb", retrying);
 
   useEffect(() => {
     setLoading(true);
     setError(false);
+    setRetrying(false);
   }, [image.url]);
 
   useEffect(() => {
@@ -61,12 +63,18 @@ export function ArchiveImage({
             <Text style={styles.errorText}>Failed to load image</Text>
           ) : (
             <CachedImage
+              key={thumbUri}
               uri={thumbUri}
               style={styles.image}
               resizeMode="cover"
               priority={priority ? "high" : "normal"}
               onLoadEnd={() => setLoading(false)}
               onError={() => {
+                if (!retrying) {
+                  setRetrying(true);
+                  setLoading(true);
+                  return;
+                }
                 setLoading(false);
                 setError(true);
               }}
