@@ -30,7 +30,8 @@ export const GOOGLE_WEB_CLIENT_ID =
  * Add the same value to backend GOOGLE_ANDROID_CLIENT_ID on Vercel if Google
  * sign-in tokens use a different aud/azp than the Web client ID.
  */
-export const GOOGLE_ANDROID_CLIENT_ID = "";
+export const GOOGLE_ANDROID_CLIENT_ID =
+  "656762894703-5aktp654fj25uhvhkn5lbdgvuo6jt1lj.apps.googleusercontent.com";
 
 /**
  * Stripe publishable key (pk_test_… or pk_live_…).
