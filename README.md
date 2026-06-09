@@ -99,7 +99,7 @@ If Metro fails with `@d11/react-native-fast-image could not be found`, run **`np
 
 | Issue | Fix |
 |-------|-----|
-| “Cannot reach API” | Start backend; confirm `curl http://localhost:3001/health` |
+| “Cannot reach API” / signup network error | Confirm phone/emulator has internet; open **Archive** tab (if that loads, API is reachable). Rebuild app after API changes: `run-android.bat rebuild`. Production API: `https://ticker-backend-six.vercel.app/health` |
 | Build fails | Set `ANDROID_HOME`, run `cd android && ./gradlew clean` |
 | `react-native-fast-image could not be found` | Run `npm install` in project root, then rebuild |
 | No emulator | `adb devices` should list a device |

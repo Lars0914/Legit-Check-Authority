@@ -93,13 +93,15 @@ export async function getGoogleIdToken(): Promise<string> {
     }
 
     let idToken = result.data.idToken;
-    try {
-      const tokens = await GoogleSignin.getTokens();
-      if (tokens.idToken) {
-        idToken = tokens.idToken;
+    // Only fall back to getTokens when signIn did not return a token.
+    // getTokens() can return a stale cached idToken and cause backend verification to fail.
+    if (!idToken) {
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken ?? null;
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* use signIn token if getTokens fails */
     }
     if (!idToken) {
       throw new Error(

@@ -25,15 +25,53 @@ export interface SignUpResponse {
 
 let authToken: string | null = null;
 
+const NETWORK_RETRIES = 2;
+
 export function setApiAuthToken(token: string | null): void {
   authToken = token;
+}
+
+export function toApiUrl(path: string): string {
+  const trimmed = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL.replace(/\/$/, "")}${trimmed}`;
+}
+
+function formatNetworkError(url: string, err: unknown): string {
+  const detail =
+    err instanceof Error && err.message.trim()
+      ? err.message.trim()
+      : "Could not reach the server";
+  if (detail === "Network request failed") {
+    return `Cannot reach the API (${url}). Check Wi‑Fi or mobile data, then rebuild the app if you just updated networking code.`;
+  }
+  return `Cannot reach the API (${url}). ${detail}`;
+}
+
+async function fetchWithRetry(
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= NETWORK_RETRIES; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      lastError = err;
+      if (attempt < NETWORK_RETRIES) {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), 1500 * (attempt + 1));
+        });
+      }
+    }
+  }
+  throw new Error(formatNetworkError(url, lastError));
 }
 
 async function requestJson<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = toApiUrl(path);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string> | undefined),
@@ -42,14 +80,7 @@ async function requestJson<T>(
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, { ...init, headers });
-  } catch {
-    throw new Error(
-      `Network request failed (${url}). Check API_BASE_URL in src/config.ts and that the backend is running.`,
-    );
-  }
+  const res = await fetchWithRetry(url, { ...init, headers });
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
@@ -144,13 +175,13 @@ function isUsageLimitPayload(body: unknown): body is UsageLimitPayload {
 
 export async function searchGuides(query: string): Promise<SearchResponse> {
   const q = encodeURIComponent(query.trim());
-  const url = `${API_BASE_URL}/guides/search?q=${q}`;
+  const url = toApiUrl(`guides/search?q=${q}`);
   const headers: Record<string, string> = {};
   if (authToken) {
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetchWithRetry(url, { headers });
   if (res.status === 402) {
     const body = await parseErrorBody(res);
     if (isUsageLimitPayload(body)) {
@@ -175,13 +206,13 @@ export class GuideLockedError extends Error {
 }
 
 export async function fetchGuide(slug: string): Promise<GuideResponse> {
-  const url = `${API_BASE_URL}/guides/${encodeURIComponent(slug)}`;
+  const url = toApiUrl(`guides/${encodeURIComponent(slug)}`);
   const headers: Record<string, string> = {};
   if (authToken) {
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetchWithRetry(url, { headers });
   if (res.status === 402) {
     const body = await parseErrorBody(res);
     if (isUsageLimitPayload(body)) {
@@ -222,10 +253,9 @@ export function confirmSubscription(
   });
 }
 
-/** Vercel routes archive via /api?path= until rewrites are deployed. */
 function archiveApiPath(segments: string, query = ""): string {
-  const q = query ? `&q=${encodeURIComponent(query.trim())}` : "";
-  return `/api?path=${segments}${q}`;
+  const q = query ? `?q=${encodeURIComponent(query.trim())}` : "";
+  return `${segments}${q}`;
 }
 
 export function fetchArchiveCatalog(
@@ -249,7 +279,7 @@ export function fetchArchiveModel(
 
 export async function checkApiHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE_URL}/health`);
+    const res = await fetchWithRetry(toApiUrl("health"));
     return res.ok;
   } catch {
     return false;
