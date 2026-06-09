@@ -85,27 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(async () => {
-    let idToken: string;
-    try {
-      idToken = await getGoogleIdToken();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Google sign-in failed";
-      throw new Error(message);
-    }
-
-    try {
-      const { token: nextToken, user: nextUser } =
-        await apiSignInWithGoogle(idToken);
-      await applySession(nextToken, nextUser);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Sign-in failed";
-      if (message.includes("Cannot reach the API")) {
-        throw new Error(
-          `${message} Google sign-in succeeded on your phone, but the app could not contact the server.`,
-        );
-      }
-      throw err instanceof Error ? err : new Error(message);
-    }
+    const idToken = await getGoogleIdToken();
+    const { token: nextToken, user: nextUser } =
+      await apiSignInWithGoogle(idToken);
+    await applySession(nextToken, nextUser);
   }, [applySession]);
 
   const signOut = useCallback(async () => {

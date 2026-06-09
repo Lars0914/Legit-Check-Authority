@@ -4,13 +4,15 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import okhttp3.Dns
 
-/**
- * Some mobile networks expose broken IPv6 routes to Vercel. Prefer IPv4 so
- * React Native fetch does not fail with a generic "Network request failed".
- */
+/** Prefer IPv4 when both A and AAAA records exist (common RN/Vercel connectivity issue). */
 class IPv4PreferredDns : Dns {
   override fun lookup(hostname: String): List<InetAddress> {
-    val addresses = Dns.SYSTEM.lookup(hostname)
+    val addresses =
+        try {
+          Dns.SYSTEM.lookup(hostname)
+        } catch (_: Exception) {
+          emptyList()
+        }
     val ipv4 = addresses.filterIsInstance<Inet4Address>()
     return if (ipv4.isNotEmpty()) ipv4 else addresses
   }

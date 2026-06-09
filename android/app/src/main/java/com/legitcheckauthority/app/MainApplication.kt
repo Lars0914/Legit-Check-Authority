@@ -27,6 +27,7 @@ class MainApplication : Application(), ReactApplication {
     OkHttpClientProvider.setOkHttpClientFactory {
       OkHttpClientProvider.createClientBuilder(applicationContext)
         .dns(IPv4PreferredDns())
+        .retryOnConnectionFailure(true)
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
